@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameStatus, SlotItem, SpinResult } from './types';
 import { SLOT_ITEMS, GENERIC_LOSE_MESSAGES, RETRY_BUTTON_TEXTS } from './constants';
+import { HIDDEN_ITEM_UNLOCK_THRESHOLD, WIN_PROBABILITIES, PROBABILITY_AFTER_ALL_UNLOCKED } from './config';
 import { SlotReel } from './components/SlotReel';
 import { generateBedtimeWhisper } from './services/geminiService';
-import { Sparkles, Moon, Volume2, VolumeX, BookOpen, Star, Lock, CheckCircle } from 'lucide-react';
+import { Sparkles, Moon, Volume2, VolumeX, BookOpen, Star, Lock, CheckCircle, RotateCcw } from 'lucide-react';
 import { 
   playClick, 
   playLeverPull, 
@@ -21,7 +22,8 @@ import {
   saveUnlockedItems, 
   loadUnlockedItems, 
   savePullCount, 
-  loadPullCount 
+  loadPullCount,
+  clearAllData
 } from './utils/storage';
 
 const NUM_BULBS = 8;
@@ -49,32 +51,60 @@ const generateStrip = (startItem: SlotItem | null, targetItem: SlotItem | null, 
   return strip;
 };
 
-// Standard game logic
-const determineResult = (): SpinResult => {
+// 计算动态成功概率
+const calculateWinProbability = (unlockedItems: Set<string>): number => {
+  // 计算已解锁的普通款数量（排除隐藏款）
+  // 注意："玩手机"现在参与抽奖，不再排除
+  const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
+  const unlockedStandardCount = standardItems.filter(item => unlockedItems.has(item.id)).length;
+  
+  // 使用 config.ts 中的概率表
+  const probabilities = WIN_PROBABILITIES;
+
+  // 如果已解锁数量超过概率表长度，使用配置的固定概率
+  if (unlockedStandardCount >= probabilities.length) {
+    return PROBABILITY_AFTER_ALL_UNLOCKED;
+  }
+
+  return probabilities[unlockedStandardCount];
+};
+
+// Standard game logic with dynamic probability
+const determineResult = (unlockedItems: Set<string>): SpinResult => {
   const rand = Math.random();
   const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
   
-  if (rand < 0.60) {
-    // Jackpot (Win) - 60% Chance
-    const item = standardItems.filter(i => i.id !== 'phone')[Math.floor(Math.random() * (standardItems.length - 1))];
+  // 计算动态成功概率
+  const winProbability = calculateWinProbability(unlockedItems);
+  
+  if (rand < winProbability) {
+    // Jackpot (Win) - Dynamic Probability
+    // "玩手机"现在参与抽奖
+    const item = standardItems[Math.floor(Math.random() * standardItems.length)];
     return { items: [item, item, item], isWin: true, isJackpot: true };
-  } else if (rand < 0.80) {
-    // Near Miss (Lose) - 20% Chance
-    const itemA = standardItems[Math.floor(Math.random() * standardItems.length)];
-    let itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
-    while (itemB.id === itemA.id) itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
-    return { items: [itemA, itemA, itemB], isWin: false, isJackpot: false };
   } else {
-    // Chaos (Lose) - 20% Chance
-    return { 
-        items: [
-            standardItems[Math.floor(Math.random() * standardItems.length)], 
-            standardItems[Math.floor(Math.random() * standardItems.length)], 
-            standardItems[Math.floor(Math.random() * standardItems.length)]
-        ], 
-        isWin: false, 
-        isJackpot: false 
-    };
+    // Lose - 剩余概率分为 Near Miss 和 Chaos
+    const remainingProbability = 1 - winProbability;
+    const nearMissProbability = remainingProbability * 0.5; // Near Miss 占剩余概率的50%
+    
+    if (rand < winProbability + nearMissProbability) {
+      // Near Miss (Lose) - 两个相同，一个不同
+      const itemA = standardItems[Math.floor(Math.random() * standardItems.length)];
+      let itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
+      while (itemB.id === itemA.id) itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
+      return { items: [itemA, itemA, itemB], isWin: false, isJackpot: false };
+    } else {
+      // Chaos (Lose) - 三个都不同
+      return { 
+          items: [
+              standardItems[Math.floor(Math.random() * standardItems.length)], 
+              standardItems[Math.floor(Math.random() * standardItems.length)], 
+              standardItems[Math.floor(Math.random() * standardItems.length)]
+          ], 
+          isWin: false, 
+          isJackpot: false 
+      };
+    }
   }
 };
 
@@ -215,7 +245,7 @@ const App: React.FC = () => {
     playLeverPull();
 
     // 特殊拉杆次数，触发隐藏款
-    const isSpecialPull = currentPull === 50;
+    const isSpecialPull = currentPull === HIDDEN_ITEM_UNLOCK_THRESHOLD;
     const isFailure = !isSpecialPull && Math.random() < 0.05;
 
     setTimeout(() => {
@@ -242,10 +272,10 @@ const App: React.FC = () => {
         if (hiddenItem) {
             newResult = { items: [hiddenItem, hiddenItem, hiddenItem], isWin: true, isJackpot: true };
         } else {
-            newResult = determineResult();
+            newResult = determineResult(unlockedItems);
         }
     } else {
-        newResult = determineResult();
+        newResult = determineResult(unlockedItems);
     }
     
     setResult(newResult);
@@ -370,6 +400,42 @@ const App: React.FC = () => {
     setGeminiMessage('');
   };
 
+  // 一键重置功能
+  const handleReset = useCallback(() => {
+    // 确认对话框
+    const confirmed = window.confirm('确定要重置所有游戏进度吗？\n这将清空所有解锁的梦境图鉴和拉杆次数。\n此操作不可恢复！');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    // 停止背景音乐
+    stopBackgroundMusic();
+
+    // 清空所有存储的数据
+    clearAllData();
+
+    // 重置所有状态
+    setUnlockedItems(new Set());
+    setPullCount(0);
+    setStatus(GameStatus.IDLE);
+    setResult(null);
+    setShowModal(false);
+    setGeminiMessage('');
+    setIsLeverPulled(false);
+    setIsShaking(false);
+    
+    // 重置转盘
+    setStrips([
+      generateStrip(null, null),
+      generateStrip(null, null),
+      generateStrip(null, null)
+    ]);
+
+    // 播放点击音效
+    playClick();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-start p-2 sm:p-4 overflow-x-hidden relative">
       
@@ -391,7 +457,7 @@ const App: React.FC = () => {
                 张妤婷专属哄睡神器
                 </h1>
                 <p className="text-indigo-200 mt-2 sm:mt-3 text-xs sm:text-sm md:text-lg font-light tracking-wide">
-                    拉动摇杆，爆发你的回床型依恋人格 {pullCount > 0 && pullCount < 3 && <span className="opacity-30 text-xs ml-2">({pullCount})</span>}
+                    拉动摇杆，爆发你的回床型依恋人格
                 </p>
             </div>
 
@@ -505,6 +571,17 @@ const App: React.FC = () => {
             </div>
         </div>
 
+        {/* Stats Section */}
+        <div className="w-full max-w-3xl -my-4 sm:-my-8 z-0">
+            <div className="flex justify-center">
+                <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-6 py-2 shadow-lg flex items-center gap-2">
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">累计拉动:</span>
+                    <span className="text-yellow-400 text-sm sm:text-base font-bold font-mono">{pullCount}</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">次</span>
+                </div>
+            </div>
+        </div>
+
         {/* SECTION 2: LEGEND / MENU (Matrix Grid Below) */}
         <div className="w-full max-w-3xl shrink-0">
             <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl flex flex-col">
@@ -518,7 +595,7 @@ const App: React.FC = () => {
                         {SLOT_ITEMS.map((item) => {
                             // Check if this is the hidden item and if it is currently locked
                             const isHiddenItem = item.isHidden;
-                            const isLocked = isHiddenItem && pullCount < 50;
+                            const isLocked = isHiddenItem && pullCount < HIDDEN_ITEM_UNLOCK_THRESHOLD; //隐藏显示
                             const isUnlocked = unlockedItems.has(item.id);
 
                             if (isLocked) {
@@ -571,7 +648,7 @@ const App: React.FC = () => {
                 
                 <div className="pt-2 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700 text-center">
                     <p className="text-[10px] sm:text-xs text-slate-500">
-                        {pullCount >= 50 
+                        {pullCount >= HIDDEN_ITEM_UNLOCK_THRESHOLD //隐藏显示 
                             ? "✨ 梦境深处的秘密已解锁 ✨" 
                             : "集齐三个相同图标，解锁甜蜜梦话"}
                     </p>
@@ -580,10 +657,22 @@ const App: React.FC = () => {
         </div>
 
         {/* Footer Signature */}
-        <div className="w-full max-w-3xl mt-4 sm:mt-8 text-center">
+        <div className="w-full max-w-3xl mt-4 sm:mt-8 text-center space-y-3 sm:space-y-4">
           <p className="text-xs sm:text-sm text-slate-500/60 italic">
             管振翰制作
           </p>
+          
+          {/* 一键重置按钮 */}
+          <div className="pt-2 sm:pt-4">
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg transition-all duration-200 active:scale-95"
+              title="重置所有游戏进度"
+            >
+              <RotateCcw size={14} className="sm:w-4 sm:h-4" />
+              <span>一键重置</span>
+            </button>
+          </div>
         </div>
 
       </div>
