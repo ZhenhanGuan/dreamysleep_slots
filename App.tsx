@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameStatus, SlotItem, SpinResult } from './types';
 import { SLOT_ITEMS, GENERIC_LOSE_MESSAGES, RETRY_BUTTON_TEXTS } from './constants';
-import { HIDDEN_ITEM_UNLOCK_THRESHOLD, WIN_PROBABILITIES, PROBABILITY_AFTER_ALL_UNLOCKED } from './config';
+import { HIDDEN_ITEM_UNLOCK_THRESHOLD, WIN_PROBABILITIES, PROBABILITY_AFTER_ALL_UNLOCKED, GUARANTEED_ALL_UNLOCK_THRESHOLD } from './config';
 import { SlotReel } from './components/SlotReel';
 import { generateBedtimeWhisper } from './services/geminiService';
 import { Sparkles, Moon, Volume2, VolumeX, BookOpen, Star, Lock, CheckCircle, RotateCcw } from 'lucide-react';
@@ -12,6 +12,8 @@ import {
   stopReelSpin,
   playWin, 
   playJackpot,
+  playCertificateMusic,
+  playStoryMusic,
   stopBackgroundMusic,
   playLose, 
   playMalfunction,
@@ -70,17 +72,39 @@ const calculateWinProbability = (unlockedItems: Set<string>): number => {
 };
 
 // Standard game logic with dynamic probability
-const determineResult = (unlockedItems: Set<string>): SpinResult => {
+const determineResult = (unlockedItems: Set<string>, pullCount: number): SpinResult => {
   const rand = Math.random();
   const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
   
   // 计算动态成功概率
   const winProbability = calculateWinProbability(unlockedItems);
   
-  if (rand < winProbability) {
+  // 统计已解锁的普通款数量
+  const unlockedStandardCount = standardItems.filter(item => unlockedItems.has(item.id)).length;
+
+  // 保底机制：如果拉杆次数达到阈值，开启"必中模式"
+  // 只要还有未解锁的普通款，每次拉杆必定解锁一个新的
+  const isGuaranteedMode = pullCount >= GUARANTEED_ALL_UNLOCK_THRESHOLD && unlockedStandardCount < standardItems.length;
+
+  if (isGuaranteedMode || rand < winProbability) {
     // Jackpot (Win) - Dynamic Probability
-    // "玩手机"现在参与抽奖
-    const item = standardItems[Math.floor(Math.random() * standardItems.length)];
+    let item: SlotItem;
+
+    if (isGuaranteedMode) {
+        // 保底模式：必须从未解锁的物品中选一个
+        const lockedItems = standardItems.filter(i => !unlockedItems.has(i.id));
+        if (lockedItems.length > 0) {
+            // 随机选择一个未解锁的
+            item = lockedItems[Math.floor(Math.random() * lockedItems.length)];
+        } else {
+            // 理论上不会走到这里，因为 isGuaranteedMode 判断了 size
+            item = standardItems[Math.floor(Math.random() * standardItems.length)];
+        }
+    } else {
+        // 正常中奖："玩手机"现在参与抽奖
+        item = standardItems[Math.floor(Math.random() * standardItems.length)];
+    }
+    
     return { items: [item, item, item], isWin: true, isJackpot: true };
   } else {
     // Lose - 剩余概率分为 Near Miss 和 Chaos
@@ -131,6 +155,8 @@ const App: React.FC = () => {
   const [strips, setStrips] = useState<SlotItem[][]>([[], [], []]);
   const [geminiMessage, setGeminiMessage] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false); // 通关证书弹窗
+  const [showStory, setShowStory] = useState(false); // 制作者背后的故事弹窗
   const [modalButtonText, setModalButtonText] = useState(RETRY_BUTTON_TEXTS[0]);
   
   // Track which items have been won - 从 localStorage 加载初始数据
@@ -146,6 +172,10 @@ const App: React.FC = () => {
   const [pullCount, setPullCount] = useState(() => loadPullCount());
   const [isShaking, setIsShaking] = useState(false);
 
+  // 通关状态：集齐所有物品（普通款 + 隐藏款，共26个）
+  // SLOT_ITEMS.length 包含了所有物品
+  const isGameCompleted = unlockedItems.size >= SLOT_ITEMS.length;
+
   // 同步静音状态到音效管理器
   useEffect(() => {
     setSoundMuted(isMuted);
@@ -160,6 +190,49 @@ const App: React.FC = () => {
   useEffect(() => {
     savePullCount(pullCount);
   }, [pullCount]);
+
+  const isProcessingRef = useRef(false);
+  const hasShownCertificateRef = useRef(false); // 记录是否已经展示过证书
+
+  // 统一的显示证书函数
+  const handleShowCertificate = useCallback(() => {
+    // 简单的防抖，防止短时间内重复触发（如双击或自动触发冲突）
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    // 1秒后释放锁
+    setTimeout(() => { isProcessingRef.current = false; }, 1000);
+
+    // 标记为已展示，防止 useEffect 再次触发
+    hasShownCertificateRef.current = true;
+
+    setShowCertificate(true);
+    // 播放证书专属背景音乐（无额外的中奖音效）
+    playCertificateMusic();
+    
+    if (window.confetti) {
+        window.confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#fcd34d', '#f472b6', '#60a5fa']
+        });
+    }
+  }, []);
+
+  // 监听通关状态，触发证书弹窗
+  useEffect(() => {
+    // 只有当未展示过时，才启动自动展示定时器
+    if (isGameCompleted && !hasShownCertificateRef.current) {
+        // 延迟显示，让用户先看完最后一个解锁动画
+        const timer = setTimeout(() => {
+            // 再次检查，防止等待期间用户手动操作了
+            if (!hasShownCertificateRef.current) {
+                handleShowCertificate();
+            }
+        }, 2500);
+        return () => clearTimeout(timer);
+    }
+  }, [isGameCompleted, handleShowCertificate]);
 
   // Initialize strips on mount
   useEffect(() => {
@@ -272,10 +345,10 @@ const App: React.FC = () => {
         if (hiddenItem) {
             newResult = { items: [hiddenItem, hiddenItem, hiddenItem], isWin: true, isJackpot: true };
         } else {
-            newResult = determineResult(unlockedItems);
+            newResult = determineResult(unlockedItems, pullCount);
         }
     } else {
-        newResult = determineResult(unlockedItems);
+        newResult = determineResult(unlockedItems, pullCount);
     }
     
     setResult(newResult);
@@ -437,13 +510,35 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-start p-2 sm:p-4 overflow-x-hidden relative">
+    <div className="min-h-screen flex flex-col items-center justify-start p-2 sm:p-4 overflow-x-hidden relative bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900">
       
       {/* Background Stars */}
       <div className="absolute inset-0 opacity-20 pointer-events-none" style={{
         backgroundImage: 'radial-gradient(white 1px, transparent 1px)',
         backgroundSize: '50px 50px'
       }}></div>
+
+      {/* 通关后的华丽粒子特效 */}
+      {isGameCompleted && (
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+           {/* 漂浮的金色星星和光点 */}
+           {Array.from({ length: 40 }).map((_, i) => (
+              <div 
+                key={i}
+                className="particle text-yellow-200/60"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  fontSize: `${Math.random() * 20 + 10}px`,
+                  animationDuration: `${Math.random() * 10 + 10}s`, // 10-20s duration
+                  animationDelay: `${Math.random() * 10}s`,
+                  textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                }}
+              >
+                {Math.random() > 0.7 ? '✨' : (Math.random() > 0.5 ? '⭐' : '•')}
+              </div>
+           ))}
+        </div>
+      )}
 
       {/* Main Container */}
       <div className="w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-12 z-10 py-4 sm:py-10">
@@ -572,14 +667,23 @@ const App: React.FC = () => {
         </div>
 
         {/* Stats Section */}
-        <div className="w-full max-w-3xl -my-4 sm:-my-8 z-0">
-            <div className="flex justify-center">
-                <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-6 py-2 shadow-lg flex items-center gap-2">
-                    <span className="text-slate-400 text-xs sm:text-sm font-medium">累计拉动:</span>
-                    <span className="text-yellow-400 text-sm sm:text-base font-bold font-mono">{pullCount}</span>
-                    <span className="text-slate-400 text-xs sm:text-sm font-medium">次</span>
-                </div>
+        <div className="w-full max-w-3xl -my-4 sm:-my-8 z-0 flex flex-col items-center gap-2 sm:gap-3">
+            <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-6 py-2 shadow-lg flex items-center gap-2">
+                <span className="text-slate-400 text-xs sm:text-sm font-medium">累计拉动:</span>
+                <span className="text-yellow-400 text-sm sm:text-base font-bold font-mono">{pullCount}</span>
+                <span className="text-slate-400 text-xs sm:text-sm font-medium">次</span>
             </div>
+
+            {/* 查看证书按钮 (通关后显示) */}
+            {isGameCompleted && (
+                <button
+                    onClick={handleShowCertificate}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-full text-yellow-200 text-xs sm:text-sm transition-all duration-300 animate-fade-in group"
+                >
+                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 group-hover:animate-spin-slow" />
+                    <span>查看首席守梦人证书</span>
+                </button>
+            )}
         </div>
 
         {/* SECTION 2: LEGEND / MENU (Matrix Grid Below) */}
@@ -662,8 +766,9 @@ const App: React.FC = () => {
             管振翰制作
           </p>
           
-          {/* 一键重置按钮 */}
-          <div className="pt-2 sm:pt-4">
+          {/* 底部按钮组 */}
+          <div className="pt-2 sm:pt-4 flex flex-wrap justify-center gap-3 sm:gap-4">
+            {/* 一键重置按钮 */}
             <button
               onClick={handleReset}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg transition-all duration-200 active:scale-95"
@@ -671,6 +776,18 @@ const App: React.FC = () => {
             >
               <RotateCcw size={14} className="sm:w-4 sm:h-4" />
               <span>一键重置</span>
+            </button>
+
+            {/* 背后的故事按钮 */}
+            <button
+              onClick={() => {
+                setShowStory(true);
+                playStoryMusic(); // 播放故事背景音乐
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-indigo-400 hover:text-indigo-200 bg-indigo-900/20 hover:bg-indigo-900/40 border border-indigo-500/30 hover:border-indigo-500/50 rounded-lg transition-all duration-200 active:scale-95"
+            >
+              <BookOpen size={14} className="sm:w-4 sm:h-4" />
+              <span>背后的故事</span>
             </button>
           </div>
         </div>
@@ -746,6 +863,151 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Certificate Modal (通关证书) */}
+      {showCertificate && (
+        <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+            onClick={() => {
+                setShowCertificate(false);
+                stopBackgroundMusic();
+            }}
+        >
+          <div 
+            className="bg-gradient-to-b from-slate-900 to-indigo-950 border-2 border-yellow-500/50 w-full max-w-lg rounded-2xl p-8 shadow-[0_0_50px_rgba(234,179,8,0.3)] transform transition-all animate-pop-in relative text-center overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            {/* Decorative Corners */}
+            <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-yellow-500/30 rounded-tl-xl"></div>
+            <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-yellow-500/30 rounded-tr-xl"></div>
+            <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-yellow-500/30 rounded-bl-xl"></div>
+            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-yellow-500/30 rounded-br-xl"></div>
+
+            <div className="mb-6">
+                <Sparkles className="w-16 h-16 text-yellow-400 mx-auto animate-pulse" />
+            </div>
+
+            <h2 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 mb-2 font-serif tracking-widest uppercase">
+                回床型依恋第一人
+            </h2>
+            <p className="text-yellow-500/60 text-xs tracking-[0.3em] mb-8 font-serif uppercase">
+                Dream Keeper Certified
+            </p>
+
+            <div className="space-y-4 text-indigo-100/90 font-light leading-relaxed mb-8">
+                <p>恭喜你，张妤婷。</p>
+                <p>你已捕获了梦境中所有的 {unlockedItems.size} 个碎片。</p>
+                <div className="w-8 h-px bg-yellow-500/30 mx-auto my-4"></div>
+                <p className="italic text-lg text-yellow-100">
+                    “从今往后，<br/>
+                    星河为你亮灯，晚风为你送信。<br/>
+                    愿你在每一个夜晚，<br/>
+                    都被这个世界温柔以待。”
+                </p>
+            </div>
+
+            <div className="pt-4 border-t border-white/10">
+                <p className="text-xs text-slate-500 mb-4 font-mono">
+                    颁发日期: {new Date().toLocaleDateString()}
+                </p>
+                <button 
+                    onClick={() => {
+                        setShowCertificate(false);
+                        stopBackgroundMusic();
+                    }}
+                    className="px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full transition-all active:scale-95 shadow-lg shadow-yellow-500/20"
+                >
+                    收藏这份美好
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Story Modal (制作者背后的故事) */}
+      {showStory && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl relative flex flex-col max-h-[80vh] animate-pop-in">
+            
+            {/* Header */}
+            <div className="p-4 sm:p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-2xl shrink-0">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-200 flex items-center gap-2">
+                    <BookOpen size={20} className="text-indigo-400" />
+                    制作者背后的故事
+                </h3>
+                <button 
+                    onClick={() => {
+                        setShowStory(false);
+                        stopBackgroundMusic(); // 关闭音乐
+                    }}
+                    className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-white"
+                >
+                    <span className="text-2xl leading-none">&times;</span>
+                </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-6 overflow-y-auto custom-scrollbar text-slate-300 leading-relaxed space-y-4 font-light text-sm sm:text-base">
+                <p>
+                    嗨，这里是管振翰。
+                </p>
+                <p>
+                    做这个小玩具的初衷，其实特别简单。就是想在一个睡不着的晚上，能有一个不用动脑子、只要轻轻一点，就能获得一点点微小快乐的东西。
+                </p>
+
+                {/* 图片占位符 1 */}
+                <div className="my-6 space-y-2">
+                    <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
+                        <span className="text-slate-600 text-sm">（此处可插入：灵感来源或手稿图）</span>
+                    </div>
+                    <p className="text-xs text-center text-slate-500 italic">
+                        图1：最初的想法
+                    </p>
+                </div>
+
+                <p>
+                    现在的世界太快了，连睡觉都变成了一种任务。我们总是焦虑明天的工作、复盘今天的失误。但我希望，当你打开这个网页的时候，时间能稍微慢下来一点点。
+                </p>
+                <p>
+                    看着这些可爱的图标转动，听着有点傻气的音效，如果你能哪怕有一瞬间，嘴角微微上扬，或者觉得“这什么鬼东西怪可爱的”，那我的目的就达到了。
+                </p>
+
+                {/* 图片占位符 2 */}
+                <div className="my-6 space-y-2">
+                    <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
+                        <span className="text-slate-600 text-sm">（此处可插入：开发过程或音效调试图）</span>
+                    </div>
+                    <p className="text-xs text-center text-slate-500 italic">
+                        图2：打磨每一个细节
+                    </p>
+                </div>
+
+                <p>
+                    里面的每一个图标、每一句文案，都是我一点点敲进去的。特别是那个“隐藏款”，是我藏在代码深处的一个小秘密，希望能带给你惊喜。
+                </p>
+                <p>
+                    虽然这只是一个简陋的网页，没有绚丽的3D大作那么震撼，但它是我的一份心意。一份希望你能“好好睡觉、天天开心”的心意。
+                </p>
+                <p>
+                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
+                </p>
+                <p>
+                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
+                </p>
+                <p>
+                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
+                </p>
+                <p className="text-right italic mt-8 text-slate-500">
+                    —— 2024.冬
+                </p>
+                
+                {/* 底部留白 */}
+                <div className="h-8"></div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <style>{`
         @keyframes fade-in {
@@ -785,6 +1047,31 @@ const App: React.FC = () => {
         .animate-bounce-subtle { animation: bounce-subtle 2s infinite; }
         .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         .animate-gradient-x { background-size: 200% 200%; animation: gradient-x 3s ease infinite; }
+        
+        /* 极光背景动画 */
+        @keyframes aurora {
+          0% { background-position: 50% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 50% 50%; }
+        }
+        .bg-aurora {
+          background-size: 200% 200%;
+          animation: aurora 15s ease infinite;
+        }
+
+        /* 漂浮粒子动画 */
+        @keyframes float-particle {
+          0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+        .particle {
+          position: absolute;
+          bottom: -20px;
+          pointer-events: none;
+          animation: float-particle linear forwards;
+        }
       `}</style>
     </div>
   );

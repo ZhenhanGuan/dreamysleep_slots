@@ -6,6 +6,7 @@ import successSoundUrl from './success.wav';
 import rockerSoundUrl from './rocker.wav';
 import runGambleSoundUrl from './run_gamble.wav';
 import firstLoveSoundUrl from './first_love.mp3';
+import shallWeTalkSoundUrl from './shall_we_talk.mp3';
 
 class SoundManager {
   private audioContext: AudioContext | null = null;
@@ -15,6 +16,7 @@ class SoundManager {
   private runGambleAudio: HTMLAudioElement | null = null;
   private currentGambleAudio: HTMLAudioElement | null = null; // 当前播放的转盘音效
   private firstLoveAudio: HTMLAudioElement | null = null; // 隐藏款背景音乐
+  private shallWeTalkAudio: HTMLAudioElement | null = null; // 故事背景音乐
   private currentBackgroundMusic: HTMLAudioElement | null = null; // 当前播放的背景音乐
 
   constructor() {
@@ -69,6 +71,16 @@ class SoundManager {
       this.firstLoveAudio.loop = true; // 循环播放
     } catch (e) {
       console.warn('Failed to load first_love sound:', e);
+    }
+
+    // 加载故事背景音乐
+    try {
+      this.shallWeTalkAudio = new Audio(shallWeTalkSoundUrl);
+      this.shallWeTalkAudio.preload = 'auto';
+      this.shallWeTalkAudio.volume = 0.5; // 背景音乐音量稍低
+      this.shallWeTalkAudio.loop = true; // 循环播放
+    } catch (e) {
+      console.warn('Failed to load shall_we_talk sound:', e);
     }
   }
 
@@ -306,6 +318,13 @@ class SoundManager {
     this.playAudioFile(this.successAudio);
     
     // 播放隐藏款背景音乐（循环播放）
+    this.playCertificateMusic();
+  }
+
+  // 播放证书背景音乐（仅播放 first_love.mp3）
+  playCertificateMusic() {
+    if (this.isMuted) return;
+
     if (this.firstLoveAudio) {
       try {
         // 停止之前可能正在播放的背景音乐
@@ -325,19 +344,30 @@ class SoundManager {
         console.warn('Error playing first_love audio:', e);
       }
     }
-    
-    // 如果音频文件加载失败，回退到生成的音效
-    if (!this.successAudio && !this.firstLoveAudio) {
-      const ctx = this.initAudioContext();
-      if (!ctx) return;
+  }
 
-      // 更华丽的胜利音效
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-      notes.forEach((freq, index) => {
-        setTimeout(() => {
-          this.playTone(freq, 0.4, 'sine', 0.25);
-        }, index * 80);
-      });
+  // 播放故事背景音乐（播放 shall_we_talk.mp3）
+  playStoryMusic() {
+    if (this.isMuted) return;
+
+    if (this.shallWeTalkAudio) {
+      try {
+        // 停止之前可能正在播放的背景音乐
+        this.stopBackgroundMusic();
+        
+        // 克隆音频元素以支持重新播放
+        const audioClone = this.shallWeTalkAudio.cloneNode() as HTMLAudioElement;
+        audioClone.volume = this.shallWeTalkAudio.volume;
+        audioClone.loop = true;
+        this.currentBackgroundMusic = audioClone;
+        
+        audioClone.play().catch(e => {
+          console.warn('Failed to play shall_we_talk audio:', e);
+          this.currentBackgroundMusic = null;
+        });
+      } catch (e) {
+        console.warn('Error playing shall_we_talk audio:', e);
+      }
     }
   }
 
@@ -430,6 +460,8 @@ export const playReelSpin = () => soundManager.playReelSpin();
 export const stopReelSpin = () => soundManager.stopReelSpin();
 export const playWin = () => soundManager.playWin();
 export const playJackpot = () => soundManager.playJackpot();
+export const playCertificateMusic = () => soundManager.playCertificateMusic();
+export const playStoryMusic = () => soundManager.playStoryMusic();
 export const stopBackgroundMusic = () => soundManager.stopBackgroundMusic();
 export const playLose = () => soundManager.playLose();
 export const playMalfunction = () => soundManager.playMalfunction();
