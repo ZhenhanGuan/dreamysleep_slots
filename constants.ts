@@ -13,14 +13,14 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '🥛', 
     label: '热牛奶', 
     color: 'text-blue-200',
-    message: '喝杯中医养生茶，你他妈是最强妤婷睡神。'
+    message: '喝杯中医养生茶，你他妈将成为最强妤婷睡神！'
   },
   { 
     id: 'moon', 
-    emoji: '🌙', 
-    label: '月亮船', 
+    emoji: '🌕', 
+    label: '满月', 
     color: 'text-yellow-300',
-    message: '这是百分百的月满，张妤婷你他妈一定能睡个好觉'
+    message: '这是百分百的满月，张妤婷你他妈一定能睡个好觉'
   },
   { 
     id: 'bear', 
@@ -41,7 +41,7 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '📖', 
     label: '睡前读物', 
     color: 'text-emerald-300',
-    message: '睡一觉，你的仿真LVS就不会再报错了'
+    message: '睡一觉，你的流片仿真LVS就不会再报错了'
   },
   { 
     id: 'phone', 
@@ -55,7 +55,7 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '🍵', 
     label: '花草茶', 
     color: 'text-green-200',
-    message: '何时能品尝到婷学姐的厨艺？'
+    message: '何时大展厨艺？想品尝婷学姐的辣椒炒肉'
   },
   { 
     id: 'music', 
@@ -97,7 +97,7 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '☁️', 
     label: '云朵床', 
     color: 'text-sky-200',
-    message: '蒽 抽中这个说明你他妈这个夜晚是做美梦'
+    message: '蒽 抽中这个说明你他妈今晚是做的美梦！'
   },
   { 
     id: 'socks', 
@@ -111,7 +111,7 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '🕶️', 
     label: '蒸汽眼罩', 
     color: 'text-purple-200',
-    message: '今晚张妤婷还做噩梦？不可能的！'
+    message: '何时再来上海？带你去你之前想去的东方明珠上吃饭！'
   },
   { 
     id: 'pillow', 
@@ -174,12 +174,12 @@ export const SLOT_ITEMS: SlotItem[] = [
     emoji: '🎈', 
     label: '热气球', 
     color: 'text-rose-400',
-    message: '蒽Sincerely，希望你能永远自由快乐温暖！拍很多很多照片！'
+    message: '蒽Sincerely，希望你能永远自由快乐！拍很多活人时刻照片！'
   },
   { 
     id: 'unicorn', 
     emoji: '🦄', 
-    label: '隐藏款: 梦境独角兽', 
+    label: '隐藏款: 哄睡兽', 
     color: 'text-fuchsia-400',
     message: '恭喜你发现了我精心布置的彩蛋！💌\n\n两个有共同点的人能够相遇的机率，据说是二十万分之一。\n能认识某个人的机率，是两百万分之一。\n之后能够越来越亲近的机率，是两千万分之一。\n能够成为朋友的机率是两亿分之一。\n能够成为挚友的机率，是二十亿分之一！\n遇见灵魂伴侣的机率是…六十亿分之一！\n\n我很幸运也很珍惜在微小几率中能遇见你 \n\n晚安 张妤婷',
     isHidden: true
@@ -187,7 +187,7 @@ export const SLOT_ITEMS: SlotItem[] = [
 ];
 
 export const GENERIC_LOSE_MESSAGES = [
-  "再试一次？或者... 直接闭上眼睛更舒服哦。",
+  "再试一次？或者... 直接闭上眼睛睡觉更舒服哦。",
 ];
 
 export const RETRY_BUTTON_TEXTS = [
@@ -198,3 +198,18 @@ export const RETRY_BUTTON_TEXTS = [
   "张妤婷不能睡，张妤婷还能抽",
   "张妤婷再来一次，这觉不睡了",
 ];
+
+export const MILESTONE_MESSAGES: Record<number, string> = {
+  50: "才刚刚开始呢，梦境的轮廓正在浮现...",
+  100: "坚持下去，美好的事物值得等待。",
+  150: "每一次尝试，都是通往惊喜的一步。",
+  200: "婷神不要停下啊，或许下一个就是隐藏款！",
+  250: "",
+  300: "不可思议，已经张妤婷已经抽300次了！再抽几次就暗示你隐藏款还有几次出现",
+  350: "黎明前的夜最黑，大奖前的梦最甜。",
+  400: "相信直觉，幸运女神正在向你微笑。",
+  450: "加油！距离终极梦境已经不远了。",
+  500: "500次的坚持，你是最棒的造梦师！",
+  550: "都集齐了为什么还要摇动摇杆呢？后面没惊喜了噢",
+  600: "不可思议的毅力！我后面都没设计，你他妈停下吧"
+};

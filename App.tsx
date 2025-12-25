@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameStatus, SlotItem, SpinResult } from './types';
-import { SLOT_ITEMS, GENERIC_LOSE_MESSAGES, RETRY_BUTTON_TEXTS } from './constants';
-import { HIDDEN_ITEM_UNLOCK_THRESHOLD, WIN_PROBABILITIES, PROBABILITY_AFTER_ALL_UNLOCKED, GUARANTEED_ALL_UNLOCK_THRESHOLD } from './config';
+import { SLOT_ITEMS, GENERIC_LOSE_MESSAGES, RETRY_BUTTON_TEXTS, MILESTONE_MESSAGES } from './constants';
+import { HIDDEN_ITEM_UNLOCK_THRESHOLD, HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD, WIN_PROBABILITIES, PROBABILITY_AFTER_ALL_UNLOCKED, GUARANTEED_ALL_UNLOCK_THRESHOLD, GALLERY_UNLOCK_THRESHOLD, STORY_UNLOCK_THRESHOLD } from './config';
 import { SlotReel } from './components/SlotReel';
 import { generateBedtimeWhisper } from './services/geminiService';
 import { Sparkles, Moon, Volume2, VolumeX, BookOpen, Star, Lock, CheckCircle, RotateCcw } from 'lucide-react';
@@ -14,6 +14,8 @@ import {
   playJackpot,
   playCertificateMusic,
   playStoryMusic,
+  playGalleryMusic,
+  playLetterMusic,
   stopBackgroundMusic,
   playLose, 
   playMalfunction,
@@ -28,18 +30,50 @@ import {
   clearAllData
 } from './utils/storage';
 
+// 动态加载相册图片
+const galleryModules = import.meta.glob('./imgs/*.{png,jpg,jpeg,svg}', { eager: true });
+const galleryImageList = Object.values(galleryModules).map((mod: any) => mod.default);
+
+// 相册文字描述配置 (按文件名排序对应的顺序)
+const GALLERY_DESCRIPTIONS = [
+    "第一次去迪士尼，烟花很美，但不如你。",
+    "在海边吹风，头发乱了也很可爱。",
+    "一起吃的火锅，你被辣到的样子。",
+    "那个下雨天，我们躲在屋檐下。",
+    "你的背影，总是让我感到安心。",
+    "随手拍的街景，因为有你在画里。",
+    "纪念日快乐，未来的每一天都要有你。",
+    "偷拍你认真工作的样子。",
+    "简单的晚餐，却是最幸福的味道。",
+    "去年的冬天，雪花落在你的睫毛上。",
+    "一起看展，你比艺术品更迷人。",
+    "那只偶遇的小猫，和你一样温顺。",
+    "无论去哪，只要是和你一起就好。",
+    "平淡的日子里，也有闪光的瞬间。",
+    "谢谢你，出现在我的生命里。"
+];
+
 const NUM_BULBS = 8;
 
 // --- Logic Helpers ---
-const getRandomItem = () => {
+const getRandomItem = (unlockedItems?: Set<string>, isHiddenUnlocked?: boolean) => {
     // Exclude hidden items from random pool
-    const pool = SLOT_ITEMS.filter(i => !i.isHidden);
+    let pool = SLOT_ITEMS.filter(i => !i.isHidden);
+
+    // RESTRICTION: Before Hidden Item is unlocked, ONLY show unlocked items (if any exist)
+    if (unlockedItems && unlockedItems.size > 0 && !isHiddenUnlocked) {
+        const restrictedPool = pool.filter(i => unlockedItems.has(i.id));
+        if (restrictedPool.length > 0) {
+            pool = restrictedPool;
+        }
+    }
+
     return pool[Math.floor(Math.random() * pool.length)];
 };
 
 // Helper to generate a strip that ensures visual continuity
-const generateStrip = (startItem: SlotItem | null, targetItem: SlotItem | null, length: number = 40): SlotItem[] => {
-  const strip = Array.from({ length }, () => getRandomItem());
+const generateStrip = (startItem: SlotItem | null, targetItem: SlotItem | null, length: number = 40, unlockedItems?: Set<string>, isHiddenUnlocked?: boolean): SlotItem[] => {
+  const strip = Array.from({ length }, () => getRandomItem(unlockedItems, isHiddenUnlocked));
   
   // Ensure the strip starts with the currently visible item
   if (startItem) {
@@ -82,15 +116,27 @@ const determineResult = (unlockedItems: Set<string>, pullCount: number): SpinRes
   // 统计已解锁的普通款数量
   const unlockedStandardCount = standardItems.filter(item => unlockedItems.has(item.id)).length;
 
+  // 检查隐藏款是否已解锁
+  const hiddenItem = SLOT_ITEMS.find(i => i.isHidden);
+  const isHiddenUnlocked = hiddenItem && unlockedItems.has(hiddenItem.id);
+
+  // 进度阻塞检查：如果达到阈值但未解锁隐藏款，则不能解锁剩余普通款
+  const isProgressBlocked = !isHiddenUnlocked && unlockedStandardCount >= HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD;
+
   // 保底机制：如果拉杆次数达到阈值，开启"必中模式"
-  // 只要还有未解锁的普通款，每次拉杆必定解锁一个新的
-  const isGuaranteedMode = pullCount >= GUARANTEED_ALL_UNLOCK_THRESHOLD && unlockedStandardCount < standardItems.length;
+  // 只要还有未解锁的普通款，且没有被阻塞，每次拉杆必定解锁一个新的
+  const isGuaranteedMode = !isProgressBlocked && pullCount >= GUARANTEED_ALL_UNLOCK_THRESHOLD && unlockedStandardCount < standardItems.length;
 
   if (isGuaranteedMode || rand < winProbability) {
     // Jackpot (Win) - Dynamic Probability
     let item: SlotItem;
 
-    if (isGuaranteedMode) {
+    if (isProgressBlocked) {
+        // 阻塞模式：强制只能抽到已解锁的普通款（制造"卡住"的假象，等待隐藏款）
+        const unlockedPool = standardItems.filter(i => unlockedItems.has(i.id));
+        // 理论上一定会有的，因为 threshold >= 1
+        item = unlockedPool[Math.floor(Math.random() * unlockedPool.length)];
+    } else if (isGuaranteedMode) {
         // 保底模式：必须从未解锁的物品中选一个
         const lockedItems = standardItems.filter(i => !unlockedItems.has(i.id));
         if (lockedItems.length > 0) {
@@ -102,6 +148,9 @@ const determineResult = (unlockedItems: Set<string>, pullCount: number): SpinRes
         }
     } else {
         // 正常中奖："玩手机"现在参与抽奖
+        // 如果被阻塞（这里虽然 isProgressBlocked 进不来上面的 else if，但为了安全逻辑）
+        // 其实上面 if (isProgressBlocked) 已经处理了。
+        // 所以这里是 !isProgressBlocked 的情况。
         item = standardItems[Math.floor(Math.random() * standardItems.length)];
     }
     
@@ -111,19 +160,28 @@ const determineResult = (unlockedItems: Set<string>, pullCount: number): SpinRes
     const remainingProbability = 1 - winProbability;
     const nearMissProbability = remainingProbability * 0.5; // Near Miss 占剩余概率的50%
     
+    // RESTRICTION for Lose visuals: Only use unlocked items if Hidden Item not unlocked
+    let visualPool = standardItems;
+    if (!isHiddenUnlocked && unlockedItems.size > 0) {
+        const unlockedPool = standardItems.filter(i => unlockedItems.has(i.id));
+        if (unlockedPool.length > 0) {
+            visualPool = unlockedPool;
+        }
+    }
+
     if (rand < winProbability + nearMissProbability) {
       // Near Miss (Lose) - 两个相同，一个不同
-      const itemA = standardItems[Math.floor(Math.random() * standardItems.length)];
-      let itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
-      while (itemB.id === itemA.id) itemB = standardItems[Math.floor(Math.random() * standardItems.length)];
+      const itemA = visualPool[Math.floor(Math.random() * visualPool.length)];
+      let itemB = visualPool[Math.floor(Math.random() * visualPool.length)];
+      while (itemB.id === itemA.id) itemB = visualPool[Math.floor(Math.random() * visualPool.length)];
       return { items: [itemA, itemA, itemB], isWin: false, isJackpot: false };
     } else {
       // Chaos (Lose) - 三个都不同
       return { 
           items: [
-              standardItems[Math.floor(Math.random() * standardItems.length)], 
-              standardItems[Math.floor(Math.random() * standardItems.length)], 
-              standardItems[Math.floor(Math.random() * standardItems.length)]
+              visualPool[Math.floor(Math.random() * visualPool.length)], 
+              visualPool[Math.floor(Math.random() * visualPool.length)], 
+              visualPool[Math.floor(Math.random() * visualPool.length)]
           ], 
           isWin: false, 
           isJackpot: false 
@@ -133,17 +191,27 @@ const determineResult = (unlockedItems: Set<string>, pullCount: number): SpinRes
 };
 
 // Explicitly generate a losing result (Different items/Misaligned visual)
-const getLosingResult = (): SpinResult => {
+const getLosingResult = (unlockedItems: Set<string>, isHiddenUnlocked: boolean): SpinResult => {
   const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
+  
+  // RESTRICTION: Only use unlocked items if Hidden Item not unlocked
+  let visualPool = standardItems;
+  if (!isHiddenUnlocked && unlockedItems.size > 0) {
+      const unlockedPool = standardItems.filter(i => unlockedItems.has(i.id));
+      if (unlockedPool.length > 0) {
+          visualPool = unlockedPool;
+      }
+  }
+
   let items: [SlotItem, SlotItem, SlotItem] = [
-      standardItems[Math.floor(Math.random() * standardItems.length)],
-      standardItems[Math.floor(Math.random() * standardItems.length)],
-      standardItems[Math.floor(Math.random() * standardItems.length)]
+      visualPool[Math.floor(Math.random() * visualPool.length)],
+      visualPool[Math.floor(Math.random() * visualPool.length)],
+      visualPool[Math.floor(Math.random() * visualPool.length)]
   ];
 
   // Ensure it's not accidentally a win (A-A-A)
   while (items[0].id === items[1].id && items[1].id === items[2].id) {
-     items[2] = standardItems[Math.floor(Math.random() * standardItems.length)];
+     items[2] = visualPool[Math.floor(Math.random() * visualPool.length)];
   }
 
   return { items, isWin: false, isJackpot: false };
@@ -157,6 +225,11 @@ const App: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false); // 通关证书弹窗
   const [showStory, setShowStory] = useState(false); // 制作者背后的故事弹窗
+  const [showIntro, setShowIntro] = useState(true); // 游戏玩法介绍弹窗
+  const [showMilestone, setShowMilestone] = useState(false); // 里程碑弹窗
+  const [showGallery, setShowGallery] = useState(false); // 相册弹窗
+  const [showLetter, setShowLetter] = useState(false); // 给妤婷的话弹窗
+  const [milestoneMessage, setMilestoneMessage] = useState('');
   const [modalButtonText, setModalButtonText] = useState(RETRY_BUTTON_TEXTS[0]);
   
   // Track which items have been won - 从 localStorage 加载初始数据
@@ -236,7 +309,13 @@ const App: React.FC = () => {
 
   // Initialize strips on mount
   useEffect(() => {
-    setStrips([generateStrip(null, null), generateStrip(null, null), generateStrip(null, null)]);
+    const hiddenItem = SLOT_ITEMS.find(i => i.isHidden);
+    const isHiddenUnlocked = hiddenItem && unlockedItems.has(hiddenItem.id);
+    setStrips([
+        generateStrip(null, null, 40, unlockedItems, !!isHiddenUnlocked), 
+        generateStrip(null, null, 40, unlockedItems, !!isHiddenUnlocked), 
+        generateStrip(null, null, 40, unlockedItems, !!isHiddenUnlocked)
+    ]);
   }, []);
 
   // --- Light Pattern Logic ---
@@ -314,11 +393,26 @@ const App: React.FC = () => {
     setPullCount(currentPull);
     setIsLeverPulled(true);
 
+    // Check Milestones
+    if (MILESTONE_MESSAGES[currentPull]) {
+        setMilestoneMessage(MILESTONE_MESSAGES[currentPull]);
+        setShowMilestone(true);
+    }
+
     // 播放拉动摇杆音效
     playLeverPull();
 
-    // 特殊拉杆次数，触发隐藏款
-    const isSpecialPull = currentPull === HIDDEN_ITEM_UNLOCK_THRESHOLD;
+    // 特殊条件触发隐藏款（拉杆次数达标 且 普通款集齐数量达标 且 尚未解锁隐藏款）
+    const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
+    const unlockedStandardCount = standardItems.filter(item => unlockedItems.has(item.id)).length;
+    const hiddenItem = SLOT_ITEMS.find(i => i.isHidden);
+    const isHiddenUnlocked = hiddenItem && unlockedItems.has(hiddenItem.id);
+
+    // 只要满足条件且未解锁，就触发（这里设为必中，防止错过）
+    // 注意：如果之前是 === THRESHOLD，现在改为 >=，确保只要条件满足且没解锁，下一发就是它
+    const isSpecialPull = !isHiddenUnlocked && 
+                          currentPull >= HIDDEN_ITEM_UNLOCK_THRESHOLD && 
+                          unlockedStandardCount >= HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD;
     const isFailure = !isSpecialPull && Math.random() < 0.05;
 
     setTimeout(() => {
@@ -335,13 +429,16 @@ const App: React.FC = () => {
     // 停止背景音乐（开始新游戏时）
     stopBackgroundMusic();
     
+    // Check hidden item status for visual restriction
+    const hiddenItem = SLOT_ITEMS.find(i => i.isHidden);
+    const isHiddenUnlocked = hiddenItem && unlockedItems.has(hiddenItem.id);
+    
     const currentItems = getCurrentItems();
     let newResult: SpinResult;
 
     if (isFailure) {
-        newResult = getLosingResult();
+        newResult = getLosingResult(unlockedItems, !!isHiddenUnlocked);
     } else if (isSpecialPull) {
-        const hiddenItem = SLOT_ITEMS.find(i => i.isHidden);
         if (hiddenItem) {
             newResult = { items: [hiddenItem, hiddenItem, hiddenItem], isWin: true, isJackpot: true };
         } else {
@@ -354,9 +451,9 @@ const App: React.FC = () => {
     setResult(newResult);
 
     setStrips([
-      generateStrip(currentItems[0], newResult.items[0], 30),
-      generateStrip(currentItems[1], newResult.items[1], 60),
-      generateStrip(currentItems[2], newResult.items[2], 80)
+      generateStrip(currentItems[0], newResult.items[0], 30, unlockedItems, !!isHiddenUnlocked),
+      generateStrip(currentItems[1], newResult.items[1], 60, unlockedItems, !!isHiddenUnlocked),
+      generateStrip(currentItems[2], newResult.items[2], 80, unlockedItems, !!isHiddenUnlocked)
     ]);
 
     // 播放转盘转动音效（在摇杆拉动后播放 run_gamble.wav）
@@ -668,10 +765,20 @@ const App: React.FC = () => {
 
         {/* Stats Section */}
         <div className="w-full max-w-3xl -my-4 sm:-my-8 z-0 flex flex-col items-center gap-2 sm:gap-3">
-            <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-6 py-2 shadow-lg flex items-center gap-2">
-                <span className="text-slate-400 text-xs sm:text-sm font-medium">累计拉动:</span>
-                <span className="text-yellow-400 text-sm sm:text-base font-bold font-mono">{pullCount}</span>
-                <span className="text-slate-400 text-xs sm:text-sm font-medium">次</span>
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-6">
+                {/* 累计拉动 */}
+                <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-4 sm:px-6 py-2 shadow-lg flex items-center gap-2">
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">累计拉动:</span>
+                    <span className="text-yellow-400 text-sm sm:text-base font-bold font-mono">{pullCount}</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">次</span>
+                </div>
+
+                {/* 已收集 */}
+                <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-full px-4 sm:px-6 py-2 shadow-lg flex items-center gap-2">
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">已收集:</span>
+                    <span className="text-pink-400 text-sm sm:text-base font-bold font-mono">{unlockedItems.size}</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-medium">/ {SLOT_ITEMS.length}</span>
+                </div>
             </div>
 
             {/* 查看证书按钮 (通关后显示) */}
@@ -686,6 +793,83 @@ const App: React.FC = () => {
             )}
         </div>
 
+        {/* Middle Section: Tips & Special Buttons */}
+        <div className="w-full max-w-3xl flex flex-col gap-4 px-4 my-4 animate-fade-in items-center">
+            
+            {/* Top: Tips Window */}
+            <div className="w-full bg-slate-800/40 backdrop-blur-sm border border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col items-center text-center">
+                <h3 className="text-indigo-300 font-bold mb-2 flex items-center gap-2 text-sm sm:text-base">
+                    <span>💡</span> 来自哄睡人的福利
+                </h3>
+                <div className="text-slate-400 text-xs sm:text-sm leading-relaxed space-y-1">
+                    <p>加油，张妤婷！每一个梦境碎片都藏着一段温柔的故事。</p>
+                    <p>当收集进度达到 <span className="text-yellow-400 font-bold">12</span>、<span className="text-indigo-400 font-bold">20</span>、<span className="text-purple-400 font-bold">26</span> 时，</p>
+                    <p>下方的神秘按钮将会逐一为你点亮。</p>
+                </div>
+            </div>
+
+            {/* Bottom: Special Buttons Group */}
+            <div className="w-full flex flex-col sm:flex-row gap-3 justify-center items-center">
+                
+                {/* 1. 妤婷的活人幸福时刻 (Unlocked at 12) */}
+                <button
+                    onClick={() => {
+                        if (unlockedItems.size >= GALLERY_UNLOCK_THRESHOLD) {
+                            setShowGallery(true);
+                            playGalleryMusic();
+                        }
+                    }}
+                    disabled={unlockedItems.size < GALLERY_UNLOCK_THRESHOLD}
+                    className={`w-full sm:w-auto sm:min-w-[240px] py-3 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 border-2 
+                    ${unlockedItems.size >= GALLERY_UNLOCK_THRESHOLD 
+                        ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-500 text-white shadow-lg hover:scale-105 active:scale-95 border-white/20' 
+                        : 'bg-slate-800/50 text-slate-600 border-slate-700/50 cursor-not-allowed grayscale opacity-70'}`}
+                >
+                    <span>{unlockedItems.size >= GALLERY_UNLOCK_THRESHOLD ? '📸' : '🔒'}</span>
+                    <span>妤婷的活人幸福时刻</span>
+                    {unlockedItems.size >= GALLERY_UNLOCK_THRESHOLD && <span>✨</span>}
+                </button>
+
+                {/* 2. 背后的故事 (Unlocked at 20) */}
+                <button
+                    onClick={() => {
+                        if (unlockedItems.size >= STORY_UNLOCK_THRESHOLD) {
+                            setShowStory(true);
+                            playStoryMusic();
+                        }
+                    }}
+                    disabled={unlockedItems.size < STORY_UNLOCK_THRESHOLD}
+                    className={`w-full sm:w-auto sm:min-w-[240px] py-3 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 border-2 
+                    ${unlockedItems.size >= STORY_UNLOCK_THRESHOLD 
+                        ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-lg hover:scale-105 active:scale-95 border-white/20' 
+                        : 'bg-slate-800/50 text-slate-600 border-slate-700/50 cursor-not-allowed grayscale opacity-70'}`}
+                >
+                    <span>{unlockedItems.size >= STORY_UNLOCK_THRESHOLD ? '📖' : '🔒'}</span>
+                    <span>制作背后的故事</span>
+                    {unlockedItems.size >= STORY_UNLOCK_THRESHOLD && <span>✨</span>}
+                </button>
+
+                {/* 3. 给妤婷的话 (Unlocked at 26) */}
+                <button
+                    onClick={() => {
+                        if (isGameCompleted) {
+                            setShowLetter(true);
+                            playLetterMusic();
+                        }
+                    }}
+                    disabled={!isGameCompleted}
+                    className={`w-full sm:w-auto sm:min-w-[240px] py-3 rounded-xl font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 border-2 
+                    ${isGameCompleted 
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg hover:scale-105 active:scale-95 border-white/20' 
+                        : 'bg-slate-800/50 text-slate-600 border-slate-700/50 cursor-not-allowed grayscale opacity-70'}`}
+                >
+                    <span>{isGameCompleted ? '✉️' : '🔒'}</span>
+                    <span>写给妤婷的信</span>
+                    {isGameCompleted && <span>✨</span>}
+                </button>
+            </div>
+        </div>
+
         {/* SECTION 2: LEGEND / MENU (Matrix Grid Below) */}
         <div className="w-full max-w-3xl shrink-0">
             <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl flex flex-col">
@@ -697,9 +881,13 @@ const App: React.FC = () => {
                 <div className="flex-1">
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-5 gap-2 sm:gap-4">
                         {SLOT_ITEMS.map((item) => {
+                            // Calculate count for lock logic
+                            const standardItems = SLOT_ITEMS.filter(i => !i.isHidden);
+                            const unlockedStandardCount = standardItems.filter(item => unlockedItems.has(item.id)).length;
+
                             // Check if this is the hidden item and if it is currently locked
                             const isHiddenItem = item.isHidden;
-                            const isLocked = isHiddenItem && pullCount < HIDDEN_ITEM_UNLOCK_THRESHOLD; //隐藏显示
+                            const isLocked = isHiddenItem && (pullCount < HIDDEN_ITEM_UNLOCK_THRESHOLD || unlockedStandardCount < HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD); //隐藏显示
                             const isUnlocked = unlockedItems.has(item.id);
 
                             if (isLocked) {
@@ -776,18 +964,6 @@ const App: React.FC = () => {
             >
               <RotateCcw size={14} className="sm:w-4 sm:h-4" />
               <span>一键重置</span>
-            </button>
-
-            {/* 背后的故事按钮 */}
-            <button
-              onClick={() => {
-                setShowStory(true);
-                playStoryMusic(); // 播放故事背景音乐
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm text-indigo-400 hover:text-indigo-200 bg-indigo-900/20 hover:bg-indigo-900/40 border border-indigo-500/30 hover:border-indigo-500/50 rounded-lg transition-all duration-200 active:scale-95"
-            >
-              <BookOpen size={14} className="sm:w-4 sm:h-4" />
-              <span>背后的故事</span>
             </button>
           </div>
         </div>
@@ -927,8 +1103,17 @@ const App: React.FC = () => {
 
       {/* Story Modal (制作者背后的故事) */}
       {showStory && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl relative flex flex-col max-h-[80vh] animate-pop-in">
+        <div 
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            onClick={() => {
+                setShowStory(false);
+                stopBackgroundMusic();
+            }}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl relative flex flex-col max-h-[80vh] animate-pop-in"
+            onClick={e => e.stopPropagation()}
+          >
             
             {/* Header */}
             <div className="p-4 sm:p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-2xl shrink-0">
@@ -999,11 +1184,245 @@ const App: React.FC = () => {
                     愿你的梦里，有星河，有极光，还有数不尽的温暖。
                 </p>
                 <p className="text-right italic mt-8 text-slate-500">
-                    —— 2024.冬
+                    —— 2025.冬
                 </p>
                 
                 {/* 底部留白 */}
                 <div className="h-8"></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Milestone Modal (里程碑鼓励) */}
+      {showMilestone && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-800 border-2 border-indigo-500/50 w-full max-w-sm rounded-xl p-6 shadow-2xl transform transition-all animate-pop-in relative text-center">
+            
+            <div className="mb-4">
+                <span className="inline-block p-3 rounded-full bg-indigo-900/50 text-indigo-300 text-2xl">
+                    🎯
+                </span>
+            </div>
+
+            <h3 className="text-xl font-bold text-indigo-200 mb-2">
+                坚持就是胜利
+            </h3>
+            
+            <p className="text-slate-400 text-xs uppercase tracking-widest mb-6">
+                已尝试 {pullCount} 次
+            </p>
+
+            <p className="text-lg text-white font-medium mb-8 leading-relaxed px-4">
+                "{milestoneMessage}"
+            </p>
+
+            <button 
+                onClick={() => setShowMilestone(false)}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors active:scale-95 shadow-lg"
+            >
+                我他妈继续抽
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Intro Modal (游戏玩法说明) */}
+      {showIntro && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 sm:p-8 shadow-2xl transform transition-all animate-pop-in relative">
+              <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
+                    欢迎来到回床型依恋哄睡神器
+                  </h2>
+                  <p className="text-slate-400 text-sm tracking-widest uppercase">
+                      For ZhangYuting
+                  </p>
+              </div>
+
+              <div className="space-y-4 text-slate-300 text-sm sm:text-base mb-8 font-light">
+                  <div className="flex items-start gap-3">
+                      <div className="bg-slate-800 p-2 rounded-lg shrink-0 text-xl">
+                          🎰
+                      </div>
+                      <div>
+                          <p className="font-bold text-slate-200">拉动摇杆</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">抽取梦境碎片，获取我的哄睡。</p>
+                      </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                      <div className="bg-slate-800 p-2 rounded-lg shrink-0 text-xl">
+                          ✨
+                      </div>
+                      <div>
+                          <p className="font-bold text-slate-200">收集图鉴</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">集齐三个相同图标，即可解锁对应梦境。</p>
+                      </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                      <div className="bg-slate-800 p-2 rounded-lg shrink-0 text-xl">
+                          🏆
+                      </div>
+                      <div>
+                          <p className="font-bold text-slate-200">成为守梦人</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">点亮所有 26 个梦境（含隐藏款），即可秒睡。</p>
+                      </div>
+                  </div>
+              </div>
+
+              <button 
+                  onClick={() => setShowIntro(false)}
+                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 group"
+              >
+                  <span>开始哄睡</span>
+                  <span className="group-hover:translate-x-1 transition-transform">🚀</span>
+              </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Gallery Modal (妤婷的活人幸福时刻) */}
+      {showGallery && (
+        <div 
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+            onClick={() => {
+                setShowGallery(false);
+                stopBackgroundMusic();
+            }}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-700 w-full max-w-4xl h-[80vh] rounded-2xl p-6 shadow-2xl overflow-hidden flex flex-col relative animate-pop-in"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 shrink-0">
+                <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-yellow-400 flex items-center gap-3">
+                    <span>📸</span> 妤婷的活人幸福时刻
+                </h2>
+                <button 
+                    onClick={() => {
+                        setShowGallery(false);
+                        stopBackgroundMusic();
+                    }}
+                    className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
+                >
+                    <span className="text-2xl leading-none">&times;</span>
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {/* 动态加载图集 */}
+                    {galleryImageList.length > 0 ? (
+                        galleryImageList.map((imgUrl, i) => (
+                            <div key={i} className="flex flex-col gap-3 group">
+                                {/* 图片区域 */}
+                                <div className="aspect-[3/4] bg-slate-800/50 rounded-xl border-2 border-slate-700/50 overflow-hidden shadow-lg hover:border-pink-500/50 transition-all relative group-hover:scale-[1.02]">
+                                    <img 
+                                        src={imgUrl as string} 
+                                        alt={`Photo ${i + 1}`} 
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        loading="lazy"
+                                    />
+                                    {/* 渐变遮罩 */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </div>
+                                {/* 文字描述区域 */}
+                                <div className="text-center bg-slate-800/30 p-2 rounded-lg border border-slate-700/30">
+                                    <p className="text-slate-400 text-sm font-light min-h-[1.25rem]">
+                                        {GALLERY_DESCRIPTIONS[i] || "未完待续..."}
+                                    </p>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        // Fallback: 如果没有图片，显示占位符
+                        Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} className="flex flex-col gap-3 group">
+                                <div className="aspect-[3/4] bg-slate-800/50 rounded-xl border-2 border-slate-700 border-dashed flex flex-col items-center justify-center hover:bg-slate-800 transition-all hover:border-pink-500/30 relative overflow-hidden shadow-lg">
+                                    <div className="text-slate-600 group-hover:text-pink-300 transition-colors text-center p-4">
+                                        <p className="text-4xl mb-4 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-transform">🖼️</p>
+                                        <span className="font-mono text-xs tracking-widest uppercase">No Images Found</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+                
+                <div className="mt-8 text-center space-y-2">
+                    <p className="text-slate-500 text-sm italic font-light">
+                        "生活不是为了赶路，而是为了感受路。"
+                    </p>
+                    <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-yellow-500 mx-auto rounded-full opacity-50"></div>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Letter Modal (给妤婷的话) */}
+      {showLetter && (
+        <div 
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+            onClick={() => {
+                setShowLetter(false);
+                stopBackgroundMusic();
+            }}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-700 w-full max-w-lg h-[70vh] rounded-2xl p-6 shadow-2xl flex flex-col relative animate-pop-in"
+            onClick={e => e.stopPropagation()}
+          >
+             {/* Header */}
+            <div className="flex justify-between items-center mb-6 shrink-0 border-b border-slate-800 pb-4">
+                <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
+                    <span>💌</span> 给妤婷的一封信
+                </h2>
+                <button 
+                    onClick={() => {
+                        setShowLetter(false);
+                        stopBackgroundMusic();
+                    }}
+                    className="text-slate-500 hover:text-white transition-colors"
+                >
+                    <span className="text-2xl leading-none">&times;</span>
+                </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar text-slate-300 leading-relaxed space-y-4 font-light text-sm sm:text-base px-2">
+                <p>亲爱的妤婷：</p>
+                <p>
+                    当你看到这段话的时候，说明你已经在我设计的这台小小哄睡贩卖机前，投入了无数次的期待与耐心，我很感谢。
+                </p>
+                <p>
+                    这是我第一次制作网页游戏，我很用心。张妤婷也是第一位玩到这款游戏的人，我很开心。我把我的处女作献给你，这是独属于你的游戏，希望你能喜欢。
+                </p>
+                <p>
+                    或许你已在游戏里体验到了我们之间的黑话，这些都是我精细设计的，First Love、羽毛球、袖口木质香、养生茶、上热下寒、Severance、咪咪抢夺战、流片仿真debug、你最喜欢的辣椒炒肉、再睡会再睡会再睡会再睡会、青椒模拟器等等......
+                    希望你能通过这款游戏回忆起独属我们之间的点滴。你说过的很多话，我都在心里。
+                </p>
+                <p>
+                    平时的相处已是礼物。你说的没错，每次你给我的日常爆赞、分享有趣视频、分享你的抽象日常、以及你摄影眼的作品等等......都像是你赠予我的礼物。我很欢喜。
+                    都说有趣的东西要分享给不敷衍的人，我深以为然。
+                    你的每次分享我都会一一看完并认真回复，而我的每次积极主动你也会热烈回应，或许这便是独属于我们的默契。我很享受我们之间的互动，我为此感到幸福。每次互动都是一份礼物，我细数，我珍重。
+                </p>      
+                <p>
+                    我知道你是很好的人，好到无论多少词都不足以形容你的美好。但为何如你这般美好，命运却要给你如此磨难，我始终困惑。善良、积极、乐观的人不应该遭受这么多痛苦。
+                    你的明媚阳光、自信开朗照耀了身边的很多人，包括我。温暖又舒适。或许是有着相似的成长背景和人生体验，你说的很多故事和情绪我都能感同身受。所以，那位藏起来的心思敏感、缺乏安全感的小女孩更让我好奇。
+                    有几时，注意到你的眉眼微微低垂，又在发呆想些什么心事呢？我想听听。
+                    你内心深处的敏感与不安，我常常想要守护。守护你的笑容。
+                </p>  
+                <p>
+                    也不知是从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天。
+                </p>             
+                <div className="pt-8 text-right">
+                    <p className="italic text-slate-500">—— 管振翰上</p>
+                </div>
             </div>
           </div>
         </div>

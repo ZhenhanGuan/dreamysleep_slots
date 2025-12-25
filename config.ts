@@ -1,8 +1,17 @@
 // 隐藏款解锁阈值（拉杆次数）
-export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 26;
+export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 48;
+
+// 隐藏款解锁阈值（普通款已解锁数量）
+export const HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD = 18;
 
 // 保底机制：达到此次数时，必定集齐所有普通款
-export const GUARANTEED_ALL_UNLOCK_THRESHOLD = 8;
+export const GUARANTEED_ALL_UNLOCK_THRESHOLD = 70;
+
+// 相册解锁阈值（已解锁的图鉴数量）
+export const GALLERY_UNLOCK_THRESHOLD = 12;
+
+// 背后的故事解锁阈值（已解锁的图鉴数量）
+export const STORY_UNLOCK_THRESHOLD = 20;
 
 // 动态成功概率表（索引为已解锁数量，值为下一次抽中的概率）
 // 0-4 (第1-5个): 60%, 40%, 35%, 25%, 35%
@@ -19,7 +28,11 @@ export const GUARANTEED_ALL_UNLOCK_THRESHOLD = 8;
 // ];
 
 export const WIN_PROBABILITIES = [
-1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 
+1,1,1,1,1,
+1,1,1,1,1,
+1,1,1,1,1,
+1,1,1,1,1,
+1,1,1,0.6,0.5 
   ];
 
 // 集齐所有普通款后的固定概率

@@ -7,6 +7,8 @@ import rockerSoundUrl from './rocker.wav';
 import runGambleSoundUrl from './run_gamble.wav';
 import firstLoveSoundUrl from './first_love.mp3';
 import shallWeTalkSoundUrl from './shall_we_talk.mp3';
+import skyTreeYoungSoundUrl from './sky_tree_young.mp3';
+import oneSummersDaySoundUrl from "./one_summer's_day.mp3";
 
 class SoundManager {
   private audioContext: AudioContext | null = null;
@@ -16,7 +18,9 @@ class SoundManager {
   private runGambleAudio: HTMLAudioElement | null = null;
   private currentGambleAudio: HTMLAudioElement | null = null; // 当前播放的转盘音效
   private firstLoveAudio: HTMLAudioElement | null = null; // 隐藏款背景音乐
-  private shallWeTalkAudio: HTMLAudioElement | null = null; // 故事背景音乐
+  private shallWeTalkAudio: HTMLAudioElement | null = null; // 写给妤婷的话背景音乐
+  private skyTreeYoungAudio: HTMLAudioElement | null = null; // 相册背景音乐
+  private oneSummersDayAudio: HTMLAudioElement | null = null; // 故事背景音乐
   private currentBackgroundMusic: HTMLAudioElement | null = null; // 当前播放的背景音乐
 
   constructor() {
@@ -73,7 +77,7 @@ class SoundManager {
       console.warn('Failed to load first_love sound:', e);
     }
 
-    // 加载故事背景音乐
+    // 加载写给妤婷的话背景音乐 (shall_we_talk)
     try {
       this.shallWeTalkAudio = new Audio(shallWeTalkSoundUrl);
       this.shallWeTalkAudio.preload = 'auto';
@@ -81,6 +85,26 @@ class SoundManager {
       this.shallWeTalkAudio.loop = true; // 循环播放
     } catch (e) {
       console.warn('Failed to load shall_we_talk sound:', e);
+    }
+
+    // 加载相册背景音乐 (sky_tree_young)
+    try {
+      this.skyTreeYoungAudio = new Audio(skyTreeYoungSoundUrl);
+      this.skyTreeYoungAudio.preload = 'auto';
+      this.skyTreeYoungAudio.volume = 0.5;
+      this.skyTreeYoungAudio.loop = true;
+    } catch (e) {
+      console.warn('Failed to load sky_tree_young sound:', e);
+    }
+
+    // 加载故事背景音乐 (one_summer's_day)
+    try {
+      this.oneSummersDayAudio = new Audio(oneSummersDaySoundUrl);
+      this.oneSummersDayAudio.preload = 'auto';
+      this.oneSummersDayAudio.volume = 0.5;
+      this.oneSummersDayAudio.loop = true;
+    } catch (e) {
+      console.warn('Failed to load one_summer\'s_day sound:', e);
     }
   }
 
@@ -145,7 +169,8 @@ class SoundManager {
 
   // 播放点击音效
   playClick() {
-    if (this.isMuted) return;
+    // 点击音效不再受静音控制
+    // if (this.isMuted) return;
     const ctx = this.initAudioContext();
     if (!ctx) return;
 
@@ -312,19 +337,18 @@ class SoundManager {
 
   // 播放大奖音效（隐藏款使用 first_love.mp3 背景音乐）
   playJackpot() {
-    if (this.isMuted) return;
+    // 即使静音也尝试播放（其中音效受静音控制，音乐不受控制）
     
-    // 先播放成功音效文件（短音效）
+    // 先播放成功音效文件（短音效）- playAudioFile 内部会检查 isMuted
     this.playAudioFile(this.successAudio);
     
-    // 播放隐藏款背景音乐（循环播放）
-    this.playCertificateMusic();
+    // 播放隐藏款背景音乐（循环播放）- 不受静音控制
+    this.playHiddenItemMusic();
   }
 
-  // 播放证书背景音乐（仅播放 first_love.mp3）
-  playCertificateMusic() {
-    if (this.isMuted) return;
-
+  // 播放隐藏款背景音乐 (first_love.mp3)
+  playHiddenItemMusic() {
+    // 即使静音也播放
     if (this.firstLoveAudio) {
       try {
         // 停止之前可能正在播放的背景音乐
@@ -346,21 +370,70 @@ class SoundManager {
     }
   }
 
-  // 播放故事背景音乐（播放 shall_we_talk.mp3）
-  playStoryMusic() {
-    if (this.isMuted) return;
+  // 播放证书背景音乐（用户要求关闭）
+  playCertificateMusic() {
+    this.stopBackgroundMusic();
+  }
 
+  // 播放相册背景音乐 (sky_tree_young)
+  playGalleryMusic() {
+    // 即使静音也播放
+    if (this.skyTreeYoungAudio) {
+      try {
+        this.stopBackgroundMusic();
+        const audioClone = this.skyTreeYoungAudio.cloneNode() as HTMLAudioElement;
+        audioClone.volume = this.skyTreeYoungAudio.volume;
+        audioClone.loop = true;
+        this.currentBackgroundMusic = audioClone;
+        audioClone.play().catch(e => {
+          console.warn('Failed to play sky_tree_young audio:', e);
+          this.currentBackgroundMusic = null;
+        });
+      } catch (e) {
+        console.warn('Error playing sky_tree_young audio:', e);
+      }
+    }
+  }
+
+  // 播放故事背景音乐 (one_summer's_day)
+  playStoryMusic() {
+    // 即使静音也播放
+    if (this.oneSummersDayAudio) {
+      try {
+        this.stopBackgroundMusic();
+        const audioClone = this.oneSummersDayAudio.cloneNode() as HTMLAudioElement;
+        audioClone.volume = this.oneSummersDayAudio.volume;
+        audioClone.loop = true;
+        
+        this.currentBackgroundMusic = audioClone;
+        audioClone.play().catch(e => {
+          console.warn('Failed to play one_summer\'s_day audio:', e);
+          this.currentBackgroundMusic = null;
+        });
+      } catch (e) {
+        console.warn('Error playing one_summer\'s_day audio:', e);
+      }
+    }
+  }
+
+  // 播放写给妤婷的话背景音乐 (shall_we_talk)
+  playLetterMusic() {
+    // 即使静音也播放
     if (this.shallWeTalkAudio) {
       try {
-        // 停止之前可能正在播放的背景音乐
         this.stopBackgroundMusic();
-        
-        // 克隆音频元素以支持重新播放
         const audioClone = this.shallWeTalkAudio.cloneNode() as HTMLAudioElement;
         audioClone.volume = this.shallWeTalkAudio.volume;
         audioClone.loop = true;
-        this.currentBackgroundMusic = audioClone;
         
+        // 限制播放时长：3分47秒 (227秒) 后重置循环
+        audioClone.addEventListener('timeupdate', () => {
+            if (audioClone.currentTime >= 227) {
+                audioClone.currentTime = 0;
+            }
+        });
+
+        this.currentBackgroundMusic = audioClone;
         audioClone.play().catch(e => {
           console.warn('Failed to play shall_we_talk audio:', e);
           this.currentBackgroundMusic = null;
@@ -462,6 +535,8 @@ export const playWin = () => soundManager.playWin();
 export const playJackpot = () => soundManager.playJackpot();
 export const playCertificateMusic = () => soundManager.playCertificateMusic();
 export const playStoryMusic = () => soundManager.playStoryMusic();
+export const playGalleryMusic = () => soundManager.playGalleryMusic();
+export const playLetterMusic = () => soundManager.playLetterMusic();
 export const stopBackgroundMusic = () => soundManager.stopBackgroundMusic();
 export const playLose = () => soundManager.playLose();
 export const playMalfunction = () => soundManager.playMalfunction();
