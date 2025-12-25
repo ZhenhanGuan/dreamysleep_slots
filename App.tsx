@@ -232,6 +232,10 @@ const App: React.FC = () => {
   const [milestoneMessage, setMilestoneMessage] = useState('');
   const [modalButtonText, setModalButtonText] = useState(RETRY_BUTTON_TEXTS[0]);
   
+  // Password State
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+  
   // Track which items have been won - 从 localStorage 加载初始数据
   const [unlockedItems, setUnlockedItems] = useState<Set<string>>(() => loadUnlockedItems());
 
@@ -1272,11 +1276,35 @@ const App: React.FC = () => {
                   </div>
               </div>
 
+              <div className="mb-6 px-4">
+                  <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                          setPassword(e.target.value);
+                          setPasswordError(false);
+                      }}
+                      placeholder="请输入启动密码..."
+                      className={`w-full bg-slate-800 border ${passwordError ? 'border-red-500 animate-shake' : 'border-slate-600 focus:border-indigo-500'} rounded-lg py-3 px-4 text-center text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all`}
+                  />
+                  {passwordError && (
+                      <p className="text-red-400 text-xs mt-2 animate-fade-in text-center">
+                          密码错误，张妤婷不要提前偷看啦！
+                      </p>
+                  )}
+              </div>
+
               <button 
-                  onClick={() => setShowIntro(false)}
+                  onClick={() => {
+                      if (password === '20020329') {
+                          setShowIntro(false);
+                      } else {
+                          setPasswordError(true);
+                      }
+                  }}
                   className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 group"
               >
-                  <span>开始哄睡</span>
+                  <span>开始哄睡助眠</span>
                   <span className="group-hover:translate-x-1 transition-transform">🚀</span>
               </button>
           </div>
