@@ -1,11 +1,11 @@
 // 隐藏款解锁阈值（拉杆次数）
-export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 48;
+export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 70;
 
 // 隐藏款解锁阈值（普通款已解锁数量）
-export const HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD = 18;
+export const HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD = 23;
 
 // 保底机制：达到此次数时，必定集齐所有普通款
-export const GUARANTEED_ALL_UNLOCK_THRESHOLD = 70;
+export const GUARANTEED_ALL_UNLOCK_THRESHOLD = 60;
 
 // 相册解锁阈值（已解锁的图鉴数量）
 export const GALLERY_UNLOCK_THRESHOLD = 12;

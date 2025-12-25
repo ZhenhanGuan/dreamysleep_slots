@@ -806,9 +806,9 @@ const App: React.FC = () => {
                     <span>💡</span> 来自哄睡人的福利
                 </h3>
                 <div className="text-slate-400 text-xs sm:text-sm leading-relaxed space-y-1">
-                    <p>加油，张妤婷！每一个梦境碎片都藏着一段温柔的故事。</p>
-                    <p>当收集进度达到 <span className="text-yellow-400 font-bold">12</span>、<span className="text-indigo-400 font-bold">20</span>、<span className="text-purple-400 font-bold">26</span> 时，</p>
+                    <p>当梦境收集进度达到 <span className="text-yellow-400 font-bold">12</span>、<span className="text-indigo-400 font-bold">20</span>、<span className="text-purple-400 font-bold">26</span> 时，</p>
                     <p>下方的神秘按钮将会逐一为你点亮。</p>
+                    <p>加油，张妤婷！每个按钮里我都藏着一些小惊喜！</p>
                 </div>
             </div>
 
@@ -1011,7 +1011,7 @@ const App: React.FC = () => {
                            <p className="text-xs sm:text-md text-indigo-300 italic font-serif leading-relaxed">
                              "{geminiMessage}"
                            </p>
-                           <p className="text-[10px] sm:text-xs text-slate-500 mt-2 sm:mt-3 text-right">- AI 梦境编织者</p>
+                           <p className="text-[10px] sm:text-xs text-slate-500 mt-2 sm:mt-3 text-right">- GZZZZZH</p>
                         </div>
                       ) : (
                         <div className="flex justify-center py-2 sm:py-4 gap-1.5 sm:gap-2">
@@ -1432,24 +1432,30 @@ const App: React.FC = () => {
                 </p>
                 <p>
                     或许你已在游戏里体验到了我们之间的黑话，这些都是我精细设计的，First Love、羽毛球、袖口木质香、养生茶、上热下寒、Severance、咪咪抢夺战、流片仿真debug、你最喜欢的辣椒炒肉、再睡会再睡会再睡会再睡会、青椒模拟器等等......
-                    希望你能通过这款游戏回忆起独属我们之间的点滴。你说过的很多话，我都在心里。
+                    希望你能通过这款游戏回忆起独属我们之间的点滴。你说过的很多话，我都记在心里。
                 </p>
                 <p>
-                    平时的相处已是礼物。你说的没错，每次你给我的日常爆赞、分享有趣视频、分享你的抽象日常、以及你摄影眼的作品等等......都像是你赠予我的礼物。我很欢喜。
+                    平时的相处已是礼物。你说的没错，每次你给我日常爆赞、分享有趣视频、分享你的抽象日常、以及你摄影眼的作品等等...... 都像是你赠予我的礼物。我很欢喜。
                     都说有趣的东西要分享给不敷衍的人，我深以为然。
                     你的每次分享我都会一一看完并认真回复，而我的每次积极主动你也会热烈回应，或许这便是独属于我们的默契。我很享受我们之间的互动，我为此感到幸福。每次互动都是一份礼物，我细数，我珍重。
                 </p>      
                 <p>
                     我知道你是很好的人，好到无论多少词都不足以形容你的美好。但为何如你这般美好，命运却要给你如此磨难，我始终困惑。善良、积极、乐观的人不应该遭受这么多痛苦。
-                    你的明媚阳光、自信开朗照耀了身边的很多人，包括我。温暖又舒适。或许是有着相似的成长背景和人生体验，你说的很多故事和情绪我都能感同身受。所以，那位藏起来的心思敏感、缺乏安全感的小女孩更让我好奇。
-                    有几时，注意到你的眉眼微微低垂，又在发呆想些什么心事呢？我想听听。
-                    你内心深处的敏感与不安，我常常想要守护。守护你的笑容。
-                </p>  
+                    你的明媚阳光、自信开朗照耀了身边的很多人，包括我。温暖又舒适。或许是有着相似的成长背景和人生体验，你说的很多故事和情绪我都能感同身受。你散发出的欢乐可以让我嘻嘻哈哈。同样，你的悲伤也可以被我看见。这很棒，也很健康。
+                    所以，满面笑容背后，那位心思敏感、缺乏安全感的小女孩让我好奇又心疼。你内心深处的敏感与不安，我常常想要给予宽慰。
+                </p>                      
                 <p>
-                    也不知是从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天。
+                  虽见面不多，但曾有几时，注意到你的眉眼微微低垂，这时的你又在想些什么呢？我想听听。
+                </p> 
+                <p>
+                    (未来展望)
+                </p>  
+
+                <p>
+                    也不知从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天。
                 </p>             
                 <div className="pt-8 text-right">
-                    <p className="italic text-slate-500">—— 管振翰上</p>
+                    <p className="italic text-slate-500">—— 管振翰致上</p>
                 </div>
             </div>
           </div>
