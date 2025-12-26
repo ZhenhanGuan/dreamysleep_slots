@@ -1,5 +1,5 @@
 // 隐藏款解锁阈值（拉杆次数）
-export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 70;
+export const HIDDEN_ITEM_UNLOCK_THRESHOLD = 26;
 
 // 隐藏款解锁阈值（普通款已解锁数量）
 export const HIDDEN_ITEM_UNLOCK_COUNT_THRESHOLD = 23;

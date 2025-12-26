@@ -36,21 +36,39 @@ const galleryImageList = Object.values(galleryModules).map((mod: any) => mod.def
 
 // 相册文字描述配置 (按文件名排序对应的顺序)
 const GALLERY_DESCRIPTIONS = [
-    "第一次去迪士尼，烟花很美，但不如你。",
-    "在海边吹风，头发乱了也很可爱。",
-    "一起吃的火锅，你被辣到的样子。",
-    "那个下雨天，我们躲在屋檐下。",
-    "你的背影，总是让我感到安心。",
-    "随手拍的街景，因为有你在画里。",
-    "纪念日快乐，未来的每一天都要有你。",
-    "偷拍你认真工作的样子。",
-    "简单的晚餐，却是最幸福的味道。",
-    "去年的冬天，雪花落在你的睫毛上。",
-    "一起看展，你比艺术品更迷人。",
-    "那只偶遇的小猫，和你一样温顺。",
-    "无论去哪，只要是和你一起就好。",
-    "平淡的日子里，也有闪光的瞬间。",
-    "谢谢你，出现在我的生命里。"
+    "杭州の夏日 婷学姐给同门过生日时的晚间照片",
+    "和格力高跑男叔叔合照",
+    "当然是要在番豆花园猛拍！",
+    "看完陶喆演唱会，怎么样也得自拍一张！",
+    "大阪心斋桥下全妆出镜他拍视角（美爆炸）",
+    "大阪心斋桥下全妆出镜正拍视角",
+    "在千本鸟居下拍的侧颜（可惜我上次没去成）",
+    "蒽蒽，应该还是在大阪！",
+    "浙大紫金港的秋冬还是很带感！",
+    "夜爬看日出，虽然很困但很放松很开心！",
+    "宝丽来和紫金港很配！",
+    "迪士尼游乐园的幸福时刻",
+    "株洲家乡的雪，也是很浪漫的！",
+    "叫一声Snow Queen也不为过！",
+    "这张简直就是仙品之照!",
+    "神奇创作家之婷の捏雪球",
+    "神奇创作家和她的小雪人",
+    "澳门、夜晚街头、婷神和红色信箱",
+    "和朋友一起拍大头贴",
+    "在澳门，左边望望",
+    "在澳门，右边望望",
+    "在澳门，前面望望",
+    "带壳的牡蛎是大人的心脏",
+    "虽没蹲到签售，但还是很开心",
+    "与大大的海报合照",
+    "来居酒屋次饭",
+    "章妤小丸子在章之鱼家次饭",
+    "胶片感带来的惊喜感真好啊",
+    "氛围感爆棚的婷！",
+    "温暖与莫奈の婷",
+    "婷的镜头感超绝",
+    "再来给自己比个耶",
+    "GZH和ZYT的合照 (^_^)"
 ];
 
 const NUM_BULBS = 8;
@@ -945,7 +963,7 @@ const App: React.FC = () => {
                 <div className="pt-2 sm:pt-4 mt-1 sm:mt-2 border-t border-slate-700 text-center">
                     <p className="text-[10px] sm:text-xs text-slate-500">
                         {pullCount >= HIDDEN_ITEM_UNLOCK_THRESHOLD //隐藏显示 
-                            ? "✨ 梦境深处的秘密已解锁 ✨" 
+                            ? "✨哄睡梦境的秘密 ✨" 
                             : "集齐三个相同图标，解锁甜蜜梦话"}
                     </p>
                 </div>
@@ -955,7 +973,7 @@ const App: React.FC = () => {
         {/* Footer Signature */}
         <div className="w-full max-w-3xl mt-4 sm:mt-8 text-center space-y-3 sm:space-y-4">
           <p className="text-xs sm:text-sm text-slate-500/60 italic">
-            管振翰制作
+            管振翰（GZZZZZH）处女作
           </p>
           
           {/* 底部按钮组 */}
@@ -1072,18 +1090,16 @@ const App: React.FC = () => {
                 回床型依恋第一人
             </h2>
             <p className="text-yellow-500/60 text-xs tracking-[0.3em] mb-8 font-serif uppercase">
-                Dream Keeper Certified
+                Hui chuang Xing yi lian
             </p>
 
             <div className="space-y-4 text-indigo-100/90 font-light leading-relaxed mb-8">
-                <p>恭喜你，张妤婷。</p>
-                <p>你已捕获了梦境中所有的 {unlockedItems.size} 个碎片。</p>
+                <p>恭喜你，睡神张妤婷！</p>
+                <p>你已经成功被确诊为回床型依恋人格！</p>
                 <div className="w-8 h-px bg-yellow-500/30 mx-auto my-4"></div>
                 <p className="italic text-lg text-yellow-100">
-                    “从今往后，<br/>
-                    星河为你亮灯，晚风为你送信。<br/>
-                    愿你在每一个夜晚，<br/>
-                    都被这个世界温柔以待。”
+                    特指一旦遇上什么事情，<br/>
+                    第一时间就想回床上躺着的依恋型人格。<br/>
                 </p>
             </div>
 
@@ -1098,7 +1114,7 @@ const App: React.FC = () => {
                     }}
                     className="px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full transition-all active:scale-95 shadow-lg shadow-yellow-500/20"
                 >
-                    收藏这份美好
+                  蒽没错 我想睡觉
                 </button>
             </div>
           </div>
@@ -1139,12 +1155,21 @@ const App: React.FC = () => {
             {/* Scrollable Content */}
             <div className="p-6 overflow-y-auto custom-scrollbar text-slate-300 leading-relaxed space-y-4 font-light text-sm sm:text-base">
                 <p>
-                    嗨，这里是管振翰。
+                    嗨妤婷，这里是管振翰。
                 </p>
                 <p>
                     做这个小玩具的初衷，其实特别简单。就是想在一个睡不着的晚上，能有一个不用动脑子、只要轻轻一点，就能获得一点点微小快乐的东西。
                 </p>
-
+                <p>
+                    现在的世界太快了，连睡觉都变成了一种任务。我们总是焦虑明天的工作、复盘今天的失误。但我希望，当你打开这个网页的时候，时间能稍微慢下来一点点。
+                </p>
+                <p>
+                    看着这些可爱的图标转动，听着有点傻气的音效，如果你能哪怕有一瞬间，嘴角微微上扬，或者觉得“这什么鬼东西怪可爱的”，那我的目的就达到了(≧∇≦)ﾉ。
+                </p>    
+                <p>    
+                    里面的每一个图标、每一句文案，都是我一点点敲进去的。特别是那个“隐藏款”，是我藏在代码深处的一个小秘密，希望能带给你惊喜(〃'▽'〃)。
+                </p>
+                      
                 {/* 图片占位符 1 */}
                 <div className="my-6 space-y-2">
                     <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
@@ -1154,39 +1179,36 @@ const App: React.FC = () => {
                         图1：最初的想法
                     </p>
                 </div>
-
                 <p>
-                    现在的世界太快了，连睡觉都变成了一种任务。我们总是焦虑明天的工作、复盘今天的失误。但我希望，当你打开这个网页的时候，时间能稍微慢下来一点点。
+                为了有一个不错的体验，我已经调试很多次。每次抽中梦境的概率、集齐多少个梦境就解锁按钮、每个按钮以及隐藏款的出场顺序、多少次保底能抽中等等...... 
+                有太多太多参数需要我调节。这些都会影响你的游戏体验。
+                我一边担心游戏太困难，所以写下了很多鼓励的话和音效作为及时反馈。又一边担心游戏太枯燥无聊，设计了隐藏款和按钮惊喜。同时也担心过程太容易而失去了游戏的乐趣，也稍微提升了些障碍难度。
                 </p>
+                <p>(づ｡◕‿‿◕｡)づ</p>
                 <p>
-                    看着这些可爱的图标转动，听着有点傻气的音效，如果你能哪怕有一瞬间，嘴角微微上扬，或者觉得“这什么鬼东西怪可爱的”，那我的目的就达到了。
+                每处体验细节我都要把控，所以我需要不断地尝试和体验。测试的一遍又一遍，我总是孜孜不倦。因为每一遍在脑海里都会浮现你的笑容！都在感受和幻想你的情绪波动！又累又开心。所以，你的每次感动和惊喜都是我的小巧思！（哈哈我真强）希望游戏最终呈现的节奏你会喜欢。
                 </p>
 
-                {/* 图片占位符 2 */}
-                <div className="my-6 space-y-2">
+               {/* 图片占位符 2 */}
+               <div className="my-6 space-y-2">
                     <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
                         <span className="text-slate-600 text-sm">（此处可插入：开发过程或音效调试图）</span>
                     </div>
                     <p className="text-xs text-center text-slate-500 italic">
                         图2：打磨每一个细节
                     </p>
-                </div>
+                </div>   
 
                 <p>
-                    里面的每一个图标、每一句文案，都是我一点点敲进去的。特别是那个“隐藏款”，是我藏在代码深处的一个小秘密，希望能带给你惊喜。
+                同时，每个按钮里的BGM也是管振翰严选！所以我希望你能带着耳机通关全程（但拉杆的声音太吵的话你可以关掉），感受我的每处设计。
                 </p>
                 <p>
-                    虽然这只是一个简陋的网页，没有绚丽的3D大作那么震撼，但它是我的一份心意。一份希望你能“好好睡觉、天天开心”的心意。
+                害怕你中途放弃，所以抽奖的一路上也在不断的鼓励你，相信你也已经看见了。 当然我知道婷神不会轻言放弃 ！敬请享受后续的体验吧！(*^▽^*)
                 </p>
-                <p>
-                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
-                </p>
-                <p>
-                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
-                </p>
-                <p>
-                    愿你的梦里，有星河，有极光，还有数不尽的温暖。
-                </p>
+
+
+ 
+
                 <p className="text-right italic mt-8 text-slate-500">
                     —— 2025.冬
                 </p>
@@ -1251,7 +1273,7 @@ const App: React.FC = () => {
                       </div>
                       <div>
                           <p className="font-bold text-slate-200">拉动摇杆</p>
-                          <p className="text-slate-400 text-xs sm:text-sm">抽取梦境碎片，获取我的哄睡。</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">抽取梦境碎片，获取哄睡。</p>
                       </div>
                   </div>
                   
@@ -1261,7 +1283,7 @@ const App: React.FC = () => {
                       </div>
                       <div>
                           <p className="font-bold text-slate-200">收集图鉴</p>
-                          <p className="text-slate-400 text-xs sm:text-sm">集齐三个相同图标，即可解锁对应梦境。</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">集齐三个相同梦境碎片，即可解锁对应梦境。</p>
                       </div>
                   </div>
 
@@ -1408,7 +1430,7 @@ const App: React.FC = () => {
              {/* Header */}
             <div className="flex justify-between items-center mb-6 shrink-0 border-b border-slate-800 pb-4">
                 <h2 className="text-xl font-bold text-indigo-300 flex items-center gap-2">
-                    <span>💌</span> 给妤婷的一封信
+                    <span>✉️</span> 给妤婷的一封信
                 </h2>
                 <button 
                     onClick={() => {
@@ -1425,7 +1447,7 @@ const App: React.FC = () => {
             <div className="flex-1 overflow-y-auto custom-scrollbar text-slate-300 leading-relaxed space-y-4 font-light text-sm sm:text-base px-2">
                 <p>亲爱的妤婷：</p>
                 <p>
-                    当你看到这段话的时候，说明你已经在我设计的这台小小哄睡贩卖机前，投入了无数次的期待与耐心，我很感谢。
+                    当你看到这段话的时候，说明你已经在我设计的这台小小哄睡机前，投入了无数次的期待与耐心，我很感谢。
                 </p>
                 <p>
                     这是我第一次制作网页游戏，我很用心。张妤婷也是第一位玩到这款游戏的人，我很开心。我把我的处女作献给你，这是独属于你的游戏，希望你能喜欢。
@@ -1448,11 +1470,11 @@ const App: React.FC = () => {
                   虽见面不多，但曾有几时，注意到你的眉眼微微低垂，这时的你又在想些什么呢？我想听听。
                 </p> 
                 <p>
-                    (未来展望)
+                   未来的日子还很长，我们的故事还没有说完。
                 </p>  
 
                 <p>
-                    也不知从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天。
+                    也不知从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天......
                 </p>             
                 <div className="pt-8 text-right">
                     <p className="italic text-slate-500">—— 管振翰致上</p>
