@@ -30,6 +30,10 @@ import {
   clearAllData
 } from './utils/storage';
 
+import storyImg1 from './imgs/bg_story_imgs/WechatIMG881.jpg';
+import storyImg2 from './imgs/bg_story_imgs/WechatIMG882.jpg';
+import storyImg3 from './imgs/bg_story_imgs/WechatIMG883.jpg';
+
 // 动态加载相册图片
 const galleryModules = import.meta.glob('./imgs/*.{png,jpg,jpeg,svg}', { eager: true });
 const galleryImageList = Object.values(galleryModules).map((mod: any) => mod.default);
@@ -1157,60 +1161,89 @@ const App: React.FC = () => {
                 <p>
                     嗨妤婷，这里是管振翰。
                 </p>
-                <p>
-                    做这个小玩具的初衷，其实特别简单。就是想在一个睡不着的晚上，能有一个不用动脑子、只要轻轻一点，就能获得一点点微小快乐的东西。
+
+                <p> 
+                制作这款游戏的灵感来源于你经常凌晨三点睡觉、你给我转发的睡觉转盘和你分享的回床型依恋人格。这些元素组成了这款游戏的灵魂。因此，张妤婷你也是这款游戏的作者。
                 </p>
                 <p>
-                    现在的世界太快了，连睡觉都变成了一种任务。我们总是焦虑明天的工作、复盘今天的失误。但我希望，当你打开这个网页的时候，时间能稍微慢下来一点点。
+                    做这个小玩具的初衷，其实特别简单。就是想在一个睡不着的晚上，能有一个不用动脑子、只要轻轻一点，就能获得一点点微小快乐的东西。收获快乐之余，同样我也希望你能早早入睡，做个美梦(๑•̀ㅂ•́)و✧。
                 </p>
                 <p>
-                    看着这些可爱的图标转动，听着有点傻气的音效，如果你能哪怕有一瞬间，嘴角微微上扬，或者觉得“这什么鬼东西怪可爱的”，那我的目的就达到了(≧∇≦)ﾉ。
+                    你日常工作节奏快、压力大，所以连睡觉都变成了一种任务。而睡前也总是焦虑明天的工作、复盘今天的失误。所以我希望，当你打开这个游戏的时候，时间能稍微慢下来一点点，心情可以放松一些。
+                </p>
+                <p>
+                    看着这些可爱的图标转动，听着有点傻气的音效，如果你能哪怕有一瞬间，嘴角微微上扬，或者觉得“这什么抽象东西，怪可爱的”，那我的目的就达到了(≧∇≦)ﾉ。
                 </p>    
                 <p>    
                     里面的每一个图标、每一句文案，都是我一点点敲进去的。特别是那个“隐藏款”，是我藏在代码深处的一个小秘密，希望能带给你惊喜(〃'▽'〃)。
                 </p>
                       
-                {/* 图片占位符 1 */}
+                {/* 图片 1 */}
                 <div className="my-6 space-y-2">
-                    <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
-                        <span className="text-slate-600 text-sm">（此处可插入：灵感来源或手稿图）</span>
+                    <div className="w-full bg-slate-800/50 rounded-lg overflow-hidden border border-slate-700 shadow-lg">
+                        <img 
+                            src={storyImg1} 
+                            alt="临时抱佛脚练字，企图把贺卡写漂亮一点" 
+                            className="w-full h-auto object-cover"
+                            loading="lazy"
+                        />
                     </div>
                     <p className="text-xs text-center text-slate-500 italic">
-                        图1：最初的想法
+                        临时抱佛脚练字，企图把贺卡写漂亮一点
                     </p>
                 </div>
+
                 <p>
                 为了有一个不错的体验，我已经调试很多次。每次抽中梦境的概率、集齐多少个梦境就解锁按钮、每个按钮以及隐藏款的出场顺序、多少次保底能抽中等等...... 
                 有太多太多参数需要我调节。这些都会影响你的游戏体验。
-                我一边担心游戏太困难，所以写下了很多鼓励的话和音效作为及时反馈。又一边担心游戏太枯燥无聊，设计了隐藏款和按钮惊喜。同时也担心过程太容易而失去了游戏的乐趣，也稍微提升了些障碍难度。
+                我一边担心游戏太枯燥无聊，所以特别设计了隐藏款和按钮惊喜。一边也担心过程太容易而失去了游戏的乐趣，因此稍微提升了些障碍难度。但同时害怕你中途放弃，所以抽奖的一路上也在不断鼓励你，相信你也已经看见了。 当然我知道婷神不会轻言放弃 ！
                 </p>
                 <p>(づ｡◕‿‿◕｡)づ</p>
-                <p>
-                每处体验细节我都要把控，所以我需要不断地尝试和体验。测试的一遍又一遍，我总是孜孜不倦。因为每一遍在脑海里都会浮现你的笑容！都在感受和幻想你的情绪波动！又累又开心。所以，你的每次感动和惊喜都是我的小巧思！（哈哈我真强）希望游戏最终呈现的节奏你会喜欢。
-                </p>
 
-               {/* 图片占位符 2 */}
+
+                {/* 图片 2 */}
                <div className="my-6 space-y-2">
-                    <div className="w-full h-48 sm:h-64 bg-slate-800/50 rounded-lg flex items-center justify-center border border-slate-700 border-dashed">
-                        <span className="text-slate-600 text-sm">（此处可插入：开发过程或音效调试图）</span>
+                    <div className="w-full bg-slate-800/50 rounded-lg overflow-hidden border border-slate-700 shadow-lg">
+                        <img 
+                            src={storyImg3} 
+                            alt="开会摸鱼偷偷搞～" 
+                            className="w-full h-auto object-cover"
+                            loading="lazy"
+                        />
                     </div>
                     <p className="text-xs text-center text-slate-500 italic">
-                        图2：打磨每一个细节
+                        开会摸鱼偷偷搞～
+                    </p>
+                </div> 
+                
+                
+                <p>
+                每处体验细节我会要把控，所以我需要不断地尝试和体验。测试的一遍又一遍，我总是孜孜不倦。因为每一遍在脑海里都会浮现你的笑容！都在感受和幻想你的情绪波动！又累又开心。所以，你的每次感动和惊喜都是我的小巧思！（哈哈我真强）。希望游戏最终呈现的节奏你会喜欢。                
+                </p>
+
+               {/* 图片 2 */}
+               <div className="my-6 space-y-2">
+                    <div className="w-full bg-slate-800/50 rounded-lg overflow-hidden border border-slate-700 shadow-lg">
+                        <img 
+                            src={storyImg2} 
+                            alt="深夜调试完最后一稿" 
+                            className="w-full h-auto object-cover"
+                            loading="lazy"
+                        />
+                    </div>
+                    <p className="text-xs text-center text-slate-500 italic">
+                        深夜调试完最后一稿
                     </p>
                 </div>   
 
                 <p>
-                同时，每个按钮里的BGM也是管振翰严选！所以我希望你能带着耳机通关全程（但拉杆的声音太吵的话你可以关掉），感受我的每处设计。
+                同时，每个按钮里的BGM也是我的严选！所以我希望你能带着耳机通关全程（但拉杆声音太吵的话你可以关掉），感受我的每处设计。
                 </p>
                 <p>
-                害怕你中途放弃，所以抽奖的一路上也在不断的鼓励你，相信你也已经看见了。 当然我知道婷神不会轻言放弃 ！敬请享受后续的体验吧！(*^▽^*)
+                制作全程一共用了13个日夜，论文看累了或是项目做烦了就会换换脑袋继续来做这个，深夜睡觉前也会敲敲代码调试。我十分享受其中。制作时，脑海里你的笑容一次一次出现，这又何尝不是另一种陪伴呢？所以感谢一路上有你相伴，与我共同完成这款游戏。 敬请享受后续的体验吧！(*^▽^*)
                 </p>
-
-
- 
-
                 <p className="text-right italic mt-8 text-slate-500">
-                    —— 2025.冬
+                    —— 2025.12.30
                 </p>
                 
                 {/* 底部留白 */}
@@ -1470,12 +1503,20 @@ const App: React.FC = () => {
                   虽见面不多，但曾有几时，注意到你的眉眼微微低垂，这时的你又在想些什么呢？我想听听。
                 </p> 
                 <p>
-                   未来的日子还很长，我们的故事还没有说完。
-                </p>  
-
+                交往的本质是成为彼此支撑的力量。电影《美国往事》里有这么一段台词，大概意思是：交往的本质，不只是为了休息时能一起去玩，去旅游，那只是附带的东西罢了。
+                互相支撑着对方的生活，成彼此的力量，这才是交往的本质。是在那些人生艰难时刻，只要想起对方，就能生出几分前进的勇气的东西，希望我们互相支撑，成为彼此的力量！
+                </p> 
                 <p>
-                    也不知从哪天起，我开始期待你的信息。好像收到了你信息，就能兴奋一整天......
-                </p>             
+                新年伊始。我希望你能在浮躁喧闹的世间平稳落地，身体和情绪都要。愿所有的欢欣言语和祝福都将从你的命脉穿过，如流水般细腻而又清风般舒适。
+                而远处的彩霞将你层层包裹，照亮你的同时也宽慰你。
+                开心、难过、顺利、挫折都将成为你的养分。 待到时机成熟时，陈旧的骨骼便会生出耀眼的花骨朵。
+                </p>
+                <p>
+                    也不知从哪天起，我开始期待你的信息。好像收到了你信息，就能开心一整天......
+                </p>
+                <p>
+                    张妤婷，我们下个游戏再见。
+                </p>                
                 <div className="pt-8 text-right">
                     <p className="italic text-slate-500">—— 管振翰致上</p>
                 </div>
